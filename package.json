@@ -24,6 +24,7 @@
     },
     "dependencies": {
         "flowbite": "^4.0.2",
+        "sortablejs": "^1.15.6",
         "swiper": "^12.2.0"
     }
 }

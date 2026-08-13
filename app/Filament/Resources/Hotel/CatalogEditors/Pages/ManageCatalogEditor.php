@@ -39,7 +39,16 @@ class ManageCatalogEditor extends Page implements HasTable
 
     public function mount(): void
     {
-        $this->initialOpenIds = [];
+        $root = $this->tree()->pagesGroupedByParent()->get(-1, collect())->first();
+
+        if (! $root) {
+            $this->initialOpenIds = [];
+
+            return;
+        }
+
+        $this->selectedPageId = $root->id;
+        $this->initialOpenIds = $this->tree()->expandToReveal(collect([$root->id]));
     }
 
     public function getMaxContentWidth(): ?string

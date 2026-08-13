@@ -7,7 +7,7 @@ A modern, community-driven Retro CMS built with Laravel 13.x
 [![Laravel](https://img.shields.io/badge/Laravel-13.x-FF2D20?style=flat&logo=laravel&logoColor=white)](https://laravel.com)
 [![PHP](https://img.shields.io/badge/PHP-8.5+-777BB4?style=flat&logo=php&logoColor=white)](https://php.net)
 
-[Live Demos](#live-preview) • [Installation](#installation) • [Documentation](https://github.com/ObjectRetros/atomcms/wiki) • [Contributing](#contributing)
+[Live Demos](#live-preview) • [Installation](#installation) • [Catalog FlashUI](#catalog-flashui) • [Documentation](https://github.com/ObjectRetros/atomcms/wiki) • [Contributing](#contributing)
 
 </div>
 
@@ -40,6 +40,47 @@ Atom CMS is a modern, community-driven CMS designed to provide a flexible and us
 - **Rcon System** - Real-time server communication
 - **Responsive Design** - Mobile-first approach with TailwindCSS
 - **Modern Stack** - Latest PHP 8.5+ features, PHPStan level 8 static analysis
+
+## Catalog FlashUI
+
+This fork adds a Flash-style catalog editor to Atom CMS's Filament housekeeping panel. It is built on the current Atom CMS stack (Laravel 13, Livewire 4 and Filament 5), so it does not use the old Laravel 9 controller/Blade implementation from earlier Atom CMS housekeeping versions.
+
+The editor keeps the existing Atom CMS catalog services and permissions while adding:
+
+- FlashUI-inspired catalog tree and page layout
+- page selection, search and breadcrumb navigation
+- drag-and-drop page moving and ordering
+- item ordering, locked-item unlock and bulk editing
+- full catalog item and `items_base` editing
+- responsive layout for smaller screens
+
+The changes in this fork were **vibe coded** with AI assistance. Review, test and adapt the code for your own hotel before using it in production. The upstream Atom CMS code remains credited to its original contributors.
+
+### Use this fork for a new installation
+
+```bash
+git clone https://github.com/Damjann-dev/atomcms-hk-catalogpage.git
+cd atomcms-hk-catalogpage
+composer setup
+```
+
+After installation, open the housekeeping panel at `/housekeeping` and choose **Hotel → Catalog Editor**. The page uses the catalog data already imported by Atom CMS; no separate catalog database is bundled by this fork.
+
+### Add the feature to an existing Atom CMS checkout
+
+The fork is based on the upstream `main` branch. For a checkout that is already on the same upstream commit line, add the fork as a remote and cherry-pick the catalog commit:
+
+```bash
+git remote add catalog-flashui https://github.com/Damjann-dev/atomcms-hk-catalogpage.git
+git fetch catalog-flashui
+git log catalog-flashui/main --oneline --grep='FlashUI'
+git cherry-pick <flashui-commit>
+npm ci
+npm run build:atom   # or: npm run build:dusk
+php artisan optimize:clear
+```
+
+If the checkout has local changes, merge the fork in a separate branch and resolve conflicts in the catalog editor view and housekeeping theme stylesheet. Never copy `.env`, `vendor`, `node_modules`, `storage` or a hotel database into a shared repository.
 
 ---
 
@@ -89,8 +130,8 @@ extension=intl
 One command installs everything - dependencies, the bundled Arcturus Morningstar 3.5.5 base database with an up-to-date catalog, app key, storage link, migrations, seeders and your theme's assets:
 
 ```bash
-git clone https://github.com/ObjectRetros/atomcms.git
-cd atomcms
+git clone https://github.com/Damjann-dev/atomcms-hk-catalogpage.git
+cd atomcms-hk-catalogpage
 
 composer setup
 ```
@@ -115,8 +156,8 @@ Prefer to do it step by step? Follow the manual guides below.
 
 ```bash
 # Clone the repository
-git clone https://github.com/ObjectRetros/atomcms.git
-cd atomcms
+git clone https://github.com/Damjann-dev/atomcms-hk-catalogpage.git
+cd atomcms-hk-catalogpage
 
 # Configure environment
 copy .env.example .env
@@ -137,11 +178,11 @@ npm run build:atom
 
 #### IIS Configuration
 
-Point your IIS site to the `public` folder inside the `atomcms` directory.
+Point your IIS site to the `public` folder inside the `atomcms-hk-catalogpage` directory.
 
 #### Required Permissions
 
-Grant "Full control" to both `IUSR` and `IIS_IUSRS` for the atomcms folder.
+Grant "Full control" to both `IUSR` and `IIS_IUSRS` for the `atomcms-hk-catalogpage` folder.
 
 **Visual guide:** [Permission setup tutorial](https://gyazo.com/7d5f38525a762c1b26bbd7552ca93478)
 
@@ -171,8 +212,8 @@ New to retro hotel setup? Follow our comprehensive three-part series:
 
 ```bash
 # Clone the repository
-git clone https://github.com/ObjectRetros/atomcms.git
-cd atomcms
+git clone https://github.com/Damjann-dev/atomcms-hk-catalogpage.git
+cd atomcms-hk-catalogpage
 
 # Configure environment
 cp .env.example .env
