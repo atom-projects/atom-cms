@@ -11,6 +11,10 @@ A modern, community-driven Retro CMS built with Laravel 13.x
 
 </div>
 
+> **Fork focus — FlashUI Catalog Editor**
+>
+> This repository is a catalog-focused fork of [ObjectRetros/atomcms](https://github.com/ObjectRetros/atomcms). The main change is the FlashUI-style catalog editor inside the Atom CMS housekeeping panel. It is not a separate CMS or a standalone catalog application; the remaining platform follows upstream Atom CMS.
+
 >[!NOTE]
 >Disclaimer: Educational Use Only
 > 
