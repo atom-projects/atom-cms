@@ -15,7 +15,7 @@ return [
     |
     */
 
-    'driver' => 'bcrypt',
+    'driver' => env('EMULATOR_DRIVER') === 'plus' ? 'argon2id' : 'bcrypt',
 
     /*
     |--------------------------------------------------------------------------

@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\User;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -10,17 +11,18 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (! Schema::hasColumn('users', 'referral_code')) {
-            Schema::table('users', function (Blueprint $table) {
+        $users = (new User)->getTable();
+        if (! Schema::hasColumn($users, 'referral_code')) {
+            Schema::table($users, function (Blueprint $table) {
                 $table->string('referral_code')->nullable()->unique()->after('home_room');
             });
         }
 
-        DB::table('users')
+        DB::table($users)
             ->whereNull('referral_code')
             ->orderBy('id')
-            ->eachById(function (object $user) {
-                DB::table('users')
+            ->eachById(function (object $user) use ($users) {
+                DB::table($users)
                     ->where('id', $user->id)
                     ->update(['referral_code' => sprintf('%s%s', $user->id, Str::random(8))]);
             });

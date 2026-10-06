@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\User;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -12,12 +13,13 @@ return new class extends Migration
             $table->string('lock_key', 64)->primary();
         });
 
-        Schema::table('users', function (Blueprint $table) {
-            if (! Schema::hasIndex('users', ['ip_register'])) {
+        $users = (new User)->getTable();
+        Schema::table($users, function (Blueprint $table) use ($users) {
+            if (! Schema::hasIndex($users, ['ip_register'])) {
                 $table->index('ip_register', 'users_ip_register_registration_index');
             }
 
-            if (! Schema::hasIndex('users', ['ip_current'])) {
+            if (! Schema::hasIndex($users, ['ip_current'])) {
                 $table->index('ip_current', 'users_ip_current_registration_index');
             }
         });

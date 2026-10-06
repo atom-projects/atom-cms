@@ -24,6 +24,8 @@ use App\Models\User\Ban;
 use App\Models\User\ClaimedReferralLog;
 use App\Models\User\Referral;
 use App\Models\User\UserReferral;
+use App\Services\Auth\DriverPasswordCast;
+use App\Services\Auth\PasswordHasher;
 use App\Services\HousekeepingPermissionsService;
 use Database\Factories\UserFactory;
 use Filament\Models\Contracts\FilamentUser;
@@ -41,7 +43,6 @@ use Illuminate\Notifications\DatabaseNotificationCollection;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 use Laravel\Sanctum\HasApiTokens;
@@ -176,6 +177,11 @@ class User extends Authenticatable implements FilamentUser, HasName
 
     protected $rememberTokenName = 'website_remember_token';
 
+    public function getTable(): string
+    {
+        return config('emulator.driver') === 'plus' ? 'website_users' : parent::getTable();
+    }
+
     /**
      * Every user query is refreshed from the active emulator in one pass.
      *
@@ -230,8 +236,8 @@ class User extends Authenticatable implements FilamentUser, HasName
     protected function casts(): array
     {
         return [
+            'password' => app()->bound('config') && config('emulator.driver') === 'plus' ? DriverPasswordCast::class : 'hashed',
             'two_factor_confirmed_at' => 'datetime',
-            'password' => 'hashed',
             'hidden_staff' => 'boolean',
             'online' => 'boolean',
             'website_balance' => 'integer',
@@ -254,10 +260,13 @@ class User extends Authenticatable implements FilamentUser, HasName
     /** @return HasOne<Rank, $this> */
     public function permission(): HasOne
     {
+        $foreignKey = 'id';
+        $localKey = config('emulator.driver') === 'plus' ? 'native_role_id' : 'rank';
+
         return $this->hasOne(
             app(RankRepository::class)->model(),
-            'id',
-            'rank',
+            $foreignKey,
+            $localKey,
         );
     }
 
@@ -390,7 +399,7 @@ class User extends Authenticatable implements FilamentUser, HasName
 
     public function changePassword(string $newPassword): void
     {
-        $this->password = Hash::make($newPassword);
+        $this->password = app(PasswordHasher::class)->make($newPassword);
         $this->setRememberToken(Str::random(60));
         $this->save();
     }

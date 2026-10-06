@@ -16,7 +16,9 @@ return new class extends Migration
             $table->timestamps();
 
             $table->foreign('user_id')->references('id')->on('users')->cascadeOnDelete();
-            $table->foreign('rank_id')->references('id')->on('permissions')->cascadeOnDelete();
+            if (config('emulator.driver') !== 'plus') {
+                $table->foreign('rank_id')->references('id')->on('permissions')->cascadeOnDelete();
+            }
         });
     }
 
