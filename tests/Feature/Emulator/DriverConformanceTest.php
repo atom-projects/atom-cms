@@ -56,6 +56,7 @@ test('the registry exposes driver labels and ada owns its compatibility migratio
     expect($manager->choices())->toBe([
         'arcturus' => 'Arcturus',
         'ada' => 'Ada',
+        'plus' => 'PlusEMU',
     ])->and($migrationNames)->toContain(
         '2014_10_12_000000_create_ada_users_compatibility_table.php',
         '2014_10_12_000001_create_ada_camera_compatibility_table.php',

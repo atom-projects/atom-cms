@@ -7,6 +7,9 @@ use App\Emulator\Data\Feature;
 use App\Emulator\Emulator;
 use App\Models\Articles\WebsiteArticle;
 use App\Models\Miscellaneous\CameraWeb;
+use App\Models\User;
+use App\Services\Auth\PasswordVerifier;
+use App\Support\FrontendUrls;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
@@ -56,7 +59,7 @@ class FortifyServiceProvider extends ServiceProvider
 
         Fortify::registerView(function (Request $request) {
             if (setting('disable_registration') === '1') {
-                return to_route('welcome')->withErrors(['register' => __('Registration is currently disabled.')]);
+                return redirect(app(FrontendUrls::class)->route('welcome'))->withErrors(['register' => __('Registration is currently disabled.')]);
             }
 
             return view('auth.register', [
@@ -86,6 +89,21 @@ class FortifyServiceProvider extends ServiceProvider
 
     private function authenticate(): void
     {
+        if (config('emulator.driver') === 'plus') {
+            Fortify::authenticateUsing(function (Request $request): ?User {
+                $username = $request->input('username');
+                $password = $request->input('password');
+
+                if (! is_string($username) || ! is_string($password)) {
+                    return null;
+                }
+
+                $user = User::query()->where('username', $username)->first();
+
+                return $user !== null && app(PasswordVerifier::class)->verify($user, $password) ? $user : null;
+            });
+        }
+
         Fortify::authenticateThrough(function () {
             return array_filter([
                 config('fortify.limiters.login') ? null : EnsureLoginIsNotThrottled::class,

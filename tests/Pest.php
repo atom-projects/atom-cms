@@ -24,10 +24,12 @@ use Illuminate\Console\Command;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Tests\AdaTestCase;
+use Tests\PlusTestCase;
 use Tests\TestCase;
 
 uses(TestCase::class, RefreshDatabase::class)->in('Feature');
 uses(AdaTestCase::class, RefreshDatabase::class)->in('Ada');
+uses(PlusTestCase::class, RefreshDatabase::class)->in('Plus');
 
 /*
 |--------------------------------------------------------------------------

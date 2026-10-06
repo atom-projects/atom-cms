@@ -3,9 +3,11 @@
 namespace App\Models\Builders;
 
 use App\Emulator\Contracts\PlayerRepository;
+use App\Emulator\Contracts\PreparesPlayerQueries;
 use App\Models\User;
 use Illuminate\Contracts\Database\Query\Expression;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
 
@@ -18,6 +20,18 @@ use Illuminate\Support\Str;
  */
 class UserBuilder extends Builder
 {
+    /** {@inheritDoc} */
+    public function setModel(Model $model)
+    {
+        parent::setModel($model);
+        $players = app(PlayerRepository::class);
+        if ($players instanceof PreparesPlayerQueries) {
+            $players->prepareQuery($this);
+        }
+
+        return $this;
+    }
+
     /** {@inheritDoc} */
     public function getModels($columns = ['*'])
     {

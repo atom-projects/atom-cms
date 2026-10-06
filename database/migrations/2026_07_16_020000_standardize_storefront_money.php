@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\User;
 use Brick\Money\Currency;
 use Brick\Money\Money;
 use Illuminate\Database\Migrations\Migration;
@@ -12,8 +13,9 @@ return new class extends Migration
     public function up(): void
     {
         $factor = $this->minorUnitFactor();
+        $users = (new User)->getTable();
 
-        Schema::table('users', function (Blueprint $table) {
+        Schema::table($users, function (Blueprint $table) {
             $table->unsignedBigInteger('website_balance')->default(0)->change();
         });
 
@@ -21,7 +23,7 @@ return new class extends Migration
             $table->unsignedBigInteger('amount')->change();
         });
 
-        DB::table('users')->update(['website_balance' => DB::raw("website_balance * {$factor}")]);
+        DB::table($users)->update(['website_balance' => DB::raw("website_balance * {$factor}")]);
         DB::table('website_shop_vouchers')->update(['amount' => DB::raw("amount * {$factor}")]);
         DB::table('website_paypal_transactions')->update(['currency' => DB::raw('UPPER(currency)')]);
 
@@ -61,9 +63,10 @@ return new class extends Migration
     public function down(): void
     {
         $factor = $this->minorUnitFactor();
+        $users = (new User)->getTable();
 
         if (
-            DB::table('users')->whereRaw('MOD(website_balance, ?) != 0', [$factor])->exists()
+            DB::table($users)->whereRaw('MOD(website_balance, ?) != 0', [$factor])->exists()
             || DB::table('website_shop_vouchers')->whereRaw('MOD(amount, ?) != 0', [$factor])->exists()
         ) {
             throw new RuntimeException('Storefront balances contain fractional major units and cannot be rolled back safely.');
@@ -95,10 +98,10 @@ return new class extends Migration
                 }
             });
 
-        DB::table('users')->update(['website_balance' => DB::raw("website_balance / {$factor}")]);
+        DB::table($users)->update(['website_balance' => DB::raw("website_balance / {$factor}")]);
         DB::table('website_shop_vouchers')->update(['amount' => DB::raw("amount / {$factor}")]);
 
-        Schema::table('users', function (Blueprint $table) {
+        Schema::table($users, function (Blueprint $table) {
             $table->unsignedInteger('website_balance')->default(0)->change();
         });
 

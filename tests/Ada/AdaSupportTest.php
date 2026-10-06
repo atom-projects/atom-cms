@@ -21,6 +21,7 @@ use App\Emulator\Drivers\Ada\AdaPlayerStatsRepository;
 use App\Emulator\Drivers\Ada\AdaRankRepository;
 use App\Emulator\Drivers\Ada\AdaRoomRepository;
 use App\Emulator\Drivers\Arcturus\ArcturusDriver;
+use App\Emulator\Drivers\Plus\PlusDriver;
 use App\Emulator\EmulatorManager;
 use App\Enums\CurrencyTypes;
 use App\Exceptions\RconConnectionException;
@@ -63,16 +64,16 @@ beforeEach(function () {
     setSetting('start_points', '0');
 });
 
-test('ada binds every emulator contract and plus is removed', function () {
+test('ada binds every emulator contract alongside the other drivers', function () {
     $drivers = config('emulator.drivers');
 
     // Arcturus remains the shipped default; this suite selects Ada.
     expect(config('emulator.drivers.arcturus'))->toBe(ArcturusDriver::class)
         ->and(config('emulator.driver'))->toBe('ada')
-        ->and($drivers)->toHaveKeys(['arcturus', 'ada'])
-        ->and($drivers)->not->toHaveKey('plus')
+        ->and($drivers)->toHaveKeys(['arcturus', 'ada', 'plus'])
         ->and($drivers['arcturus'])->toBe(ArcturusDriver::class)
         ->and($drivers['ada'])->toBe(AdaDriver::class)
+        ->and($drivers['plus'])->toBe(PlusDriver::class)
         ->and(app(EmulatorManager::class)->driver('ada')->bindings())->toMatchArray([
             BadgeRepository::class => AdaBadgeRepository::class,
             BanRepository::class => AdaBanRepository::class,
@@ -338,7 +339,7 @@ test('ada role display fields render on an article page', function () {
 });
 
 test('ada roles back staff positions and applications', function () {
-
+    setSetting('force_staff_2fa', '0');
     $user = User::factory()->create(['rank' => 6]);
     $position = WebsiteOpenPosition::create([
         'position_kind' => 'rank',
@@ -354,6 +355,9 @@ test('ada roles back staff positions and applications', function () {
 
     expect($position->permission?->rank_name)->toBe('Admin')
         ->and($application->rank?->rank_name)->toBe('Admin');
+
+    $this->actingAs($user)->getJson('/api/v1/applications/' . $position->id)->assertOk()
+        ->assertJsonPath('data.badge', '')->assertJsonPath('data.color', '#327fa8');
 });
 
 test('ada renders the shared cms page surface', function () {

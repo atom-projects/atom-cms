@@ -29,7 +29,9 @@ return new class extends Migration
 
             $table->timestamps();
 
-            $table->foreign('give_rank')->references('id')->on('permissions')->nullOnDelete();
+            if (config('emulator.driver') !== 'plus') {
+                $table->foreign('give_rank')->references('id')->on('permissions')->nullOnDelete();
+            }
         });
     }
 

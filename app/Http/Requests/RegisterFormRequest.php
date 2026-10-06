@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use App\Actions\Fortify\Rules\PasswordValidationRules;
 use App\Emulator\Emulator;
+use App\Models\User;
 use App\Rules\CloudflareTurnstileRule;
 use App\Rules\GoogleRecaptchaRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -19,8 +20,8 @@ class RegisterFormRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'username' => ['required', 'string', sprintf('regex:%s', setting('username_regex')), 'max:' . Emulator::constraints()->usernameLength, Rule::unique('users')],
-            'mail' => ['required', 'string', 'email', 'max:' . Emulator::constraints()->emailLength, Rule::unique('users')],
+            'username' => ['required', 'string', sprintf('regex:%s', setting('username_regex')), 'max:' . Emulator::constraints()->usernameLength, Rule::unique((new User)->getTable())],
+            'mail' => ['required', 'string', 'email', 'max:' . Emulator::constraints()->emailLength, Rule::unique((new User)->getTable())],
             'password' => $this->passwordRules(),
             'terms' => ['required', 'accepted'],
             'g-recaptcha-response' => [new GoogleRecaptchaRule],

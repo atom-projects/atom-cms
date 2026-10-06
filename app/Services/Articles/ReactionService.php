@@ -7,6 +7,8 @@ use App\Models\Articles\WebsiteArticleReaction;
 use App\Models\User;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 class ReactionService
 {
@@ -26,6 +28,13 @@ class ReactionService
         ];
     }
 
+    public function setReaction(WebsiteArticle $article, User $user, string $reaction, bool $active): void
+    {
+        Validator::make(['reaction' => $reaction], ['reaction' => ['required', Rule::in(config('habbo.reactions'))]])->validate();
+        $this->rateLimiter->hit($user, 'reactions', 30);
+        WebsiteArticleReaction::query()->upsert([['article_id' => $article->id, 'user_id' => $user->id, 'reaction' => $reaction, 'active' => $active]], ['article_id', 'user_id', 'reaction'], ['active']);
+    }
+
     /**
      * Active reaction counts for an article, grouped without hydrating every
      * reaction row.
@@ -40,6 +49,18 @@ class ReactionService
             ->selectRaw('reaction, COUNT(*) as reaction_count')
             ->pluck('reaction_count', 'reaction')
             ->map(fn ($count): int => (int) $count);
+    }
+
+    /** @return Collection<string, array<int, string>> */
+    public function usersFor(WebsiteArticle $article): Collection
+    {
+        return $article->reactions()
+            ->with('user:id,username')
+            ->get()
+            ->groupBy('reaction')
+            ->map(fn (Collection $reactions): array => $reactions
+                ->map(fn (WebsiteArticleReaction $reaction): string => $reaction->user->username ?? '')
+                ->values()->all());
     }
 
     /**
