@@ -17,7 +17,9 @@ final class PlusFurnitureRepository implements FurnitureRepository
 
     public function isLimitedEdition(int $baseItemId): bool
     {
-        return DB::table('catalog_items')->where('item_id', (string) $baseItemId)->where('limited_stack', '>', 0)->exists();
+        return DB::table('catalog_offer_products')
+            ->join('catalog_offer_limited', 'catalog_offer_limited.offer_id', '=', 'catalog_offer_products.offer_id')
+            ->where('catalog_offer_products.furniture_id', $baseItemId)->exists();
     }
 
     public function grant(User $user, int $baseItemId, int $amount): void
