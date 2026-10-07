@@ -36,6 +36,20 @@ test('registration writes native plus identity and aggregate rows', function () 
     expect(DB::table('users_settings')->where('user_id', $user->id)->value('home_room'))->toBe(45);
 });
 
+test('plus furniture is limited when an offer selling it has a limited stock', function () {
+    $limited = DB::table('furniture')->insertGetId(['item_name' => 'ltd_chair']);
+    $plain = DB::table('furniture')->insertGetId(['item_name' => 'chair']);
+    DB::table('catalog_offers')->insert([['id' => 1, 'localization_key' => 'ltd_chair'], ['id' => 2, 'localization_key' => 'chair']]);
+    DB::table('catalog_offer_products')->insert([
+        ['offer_id' => 1, 'position' => 0, 'product_type' => 'furni', 'furniture_id' => $limited],
+        ['offer_id' => 2, 'position' => 0, 'product_type' => 'furni', 'furniture_id' => $plain],
+    ]);
+    DB::table('catalog_offer_limited')->insert(['offer_id' => 1, 'stack' => 10]);
+
+    expect(app(FurnitureRepository::class)->isLimitedEdition($limited))->toBeTrue()
+        ->and(app(FurnitureRepository::class)->isLimitedEdition($plain))->toBeFalse();
+});
+
 test('direct model password assignments use native Plus argon2id', function () {
     $user = User::factory()->create();
     $user->forceFill(['password' => 'Direct-password!123'])->save();

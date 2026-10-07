@@ -318,41 +318,6 @@ CREATE TABLE `catalog_club_offers` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE `catalog_deals` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `items` text NOT NULL,
-  `name` varchar(35) NOT NULL,
-  `room_id` int(11) NOT NULL,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE `catalog_items` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `page_id` int(11) NOT NULL,
-  `item_id` varchar(120) NOT NULL,
-  `catalog_name` varchar(100) NOT NULL,
-  `cost_credits` int(11) NOT NULL DEFAULT 3,
-  `cost_pixels` int(11) NOT NULL DEFAULT 0,
-  `cost_diamonds` int(11) NOT NULL DEFAULT 0,
-  `amount` int(11) NOT NULL DEFAULT 1,
-  `limited_sells` int(11) NOT NULL DEFAULT 0,
-  `limited_stack` int(11) NOT NULL DEFAULT 0,
-  `offer_active` tinyint(1) NOT NULL DEFAULT 1,
-  `extradata` varchar(1024) NOT NULL DEFAULT '',
-  `badge` varchar(64) NOT NULL DEFAULT '',
-  `offer_id` int(11) NOT NULL DEFAULT -1,
-  `habbicon_id` int(11) NOT NULL DEFAULT 0,
-  `club_level` tinyint(3) unsigned NOT NULL DEFAULT 0,
-  `preview_image` varchar(255) NOT NULL DEFAULT '',
-  `order_num` int(11) NOT NULL DEFAULT 0,
-  PRIMARY KEY (`id`),
-  KEY `item_ids` (`item_id`) USING BTREE
-) ENGINE=InnoDB AUTO_INCREMENT=88805521 DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
 CREATE TABLE `catalog_marketplace_data` (
   `id` int(12) NOT NULL AUTO_INCREMENT,
   `sprite` int(7) NOT NULL,
@@ -383,24 +348,113 @@ CREATE TABLE `catalog_marketplace_offers` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `catalog_offer_limited` (
+  `offer_id` int(11) NOT NULL,
+  `stack` int(10) unsigned NOT NULL,
+  `sold` int(10) unsigned NOT NULL DEFAULT 0,
+  PRIMARY KEY (`offer_id`),
+  CONSTRAINT `fk_catalog_offer_limited_offer` FOREIGN KEY (`offer_id`) REFERENCES `catalog_offers` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `ck_catalog_offer_limited_stock` CHECK (`stack` > 0 and `sold` <= `stack`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `catalog_offer_products` (
+  `offer_id` int(11) NOT NULL,
+  `position` tinyint(3) unsigned NOT NULL,
+  `product_type` enum('furni','effect','badge','bot','pet','habbicon') NOT NULL,
+  `furniture_id` int(10) unsigned DEFAULT NULL,
+  `effect_id` int(11) DEFAULT NULL,
+  `badge_code` varchar(35) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci DEFAULT NULL,
+  `bot_preset_id` int(11) DEFAULT NULL,
+  `pet_type` int(11) DEFAULT NULL,
+  `habbicon_id` int(11) DEFAULT NULL,
+  `amount` int(10) unsigned NOT NULL DEFAULT 1,
+  `extra_param` varchar(1024) NOT NULL DEFAULT '',
+  PRIMARY KEY (`offer_id`,`position`),
+  KEY `furniture_id` (`furniture_id`),
+  KEY `fk_catalog_offer_products_badge` (`badge_code`),
+  KEY `fk_catalog_offer_products_bot` (`bot_preset_id`),
+  KEY `fk_catalog_offer_products_habbicon` (`habbicon_id`),
+  CONSTRAINT `fk_catalog_offer_products_badge` FOREIGN KEY (`badge_code`) REFERENCES `badge_definitions` (`code`),
+  CONSTRAINT `fk_catalog_offer_products_bot` FOREIGN KEY (`bot_preset_id`) REFERENCES `catalog_bot_presets` (`id`),
+  CONSTRAINT `fk_catalog_offer_products_furniture` FOREIGN KEY (`furniture_id`) REFERENCES `furniture` (`id`),
+  CONSTRAINT `fk_catalog_offer_products_habbicon` FOREIGN KEY (`habbicon_id`) REFERENCES `habbicons` (`id`),
+  CONSTRAINT `fk_catalog_offer_products_offer` FOREIGN KEY (`offer_id`) REFERENCES `catalog_offers` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `ck_catalog_offer_products_amount` CHECK (`amount` between 1 and 1000),
+  CONSTRAINT `ck_catalog_offer_products_target` CHECK (`product_type` = 'furni' = (`furniture_id` is not null) and `product_type` = 'effect' = (`effect_id` is not null) and `product_type` = 'badge' = (`badge_code` is not null) and `product_type` = 'bot' = (`bot_preset_id` is not null) and `product_type` = 'pet' = (`pet_type` is not null) and `product_type` = 'habbicon' = (`habbicon_id` is not null))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `catalog_offers` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `localization_key` varchar(100) NOT NULL,
+  `cost_credits` int(10) unsigned NOT NULL DEFAULT 0,
+  `cost_points` int(10) unsigned NOT NULL DEFAULT 0,
+  `points_type` int(10) unsigned NOT NULL DEFAULT 0,
+  `club_level` tinyint(3) unsigned NOT NULL DEFAULT 0,
+  `bulk_purchase` tinyint(1) NOT NULL DEFAULT 1,
+  `enabled` tinyint(1) NOT NULL DEFAULT 1,
+  `preview_image` varchar(255) NOT NULL DEFAULT '',
+  PRIMARY KEY (`id`),
+  CONSTRAINT `ck_catalog_offers_club_level` CHECK (`club_level` <= 2)
+) ENGINE=InnoDB AUTO_INCREMENT=1000000000 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `catalog_page_images` (
+  `page_id` int(11) NOT NULL,
+  `slot` tinyint(3) unsigned NOT NULL,
+  `image` varchar(255) NOT NULL,
+  PRIMARY KEY (`page_id`,`slot`),
+  CONSTRAINT `fk_catalog_page_images_page` FOREIGN KEY (`page_id`) REFERENCES `catalog_pages` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `catalog_page_offers` (
+  `page_id` int(11) NOT NULL,
+  `offer_id` int(11) NOT NULL,
+  `position` int(11) NOT NULL DEFAULT 0,
+  PRIMARY KEY (`page_id`,`offer_id`),
+  KEY `offer_id` (`offer_id`),
+  KEY `page_order` (`page_id`,`position`),
+  CONSTRAINT `fk_catalog_page_offers_offer` FOREIGN KEY (`offer_id`) REFERENCES `catalog_offers` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_catalog_page_offers_page` FOREIGN KEY (`page_id`) REFERENCES `catalog_pages` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `catalog_page_texts` (
+  `page_id` int(11) NOT NULL,
+  `slot` tinyint(3) unsigned NOT NULL,
+  `text` text NOT NULL,
+  PRIMARY KEY (`page_id`,`slot`),
+  CONSTRAINT `fk_catalog_page_texts_page` FOREIGN KEY (`page_id`) REFERENCES `catalog_pages` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
 CREATE TABLE `catalog_pages` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
-  `parent_id` int(11) NOT NULL DEFAULT -1,
+  `parent_id` int(11) DEFAULT NULL,
   `caption` varchar(128) NOT NULL,
-  `icon_image` int(11) NOT NULL DEFAULT 1,
+  `icon` int(11) NOT NULL DEFAULT 0,
   `required_permission` varchar(191) CHARACTER SET ascii COLLATE ascii_bin DEFAULT NULL,
-  `order_num` int(11) NOT NULL,
-  `page_link` varchar(128) NOT NULL DEFAULT '',
-  `page_layout` varchar(64) NOT NULL DEFAULT 'default_3x3',
-  `page_strings_1` text NOT NULL,
-  `page_strings_2` text NOT NULL,
-  `visible` bit(1) NOT NULL DEFAULT b'1',
-  `enabled` bit(1) NOT NULL DEFAULT b'1',
+  `position` int(11) NOT NULL DEFAULT 0,
+  `link` varchar(128) DEFAULT NULL,
+  `layout` varchar(64) NOT NULL DEFAULT 'default_3x3',
+  `visible` tinyint(1) NOT NULL DEFAULT 1,
+  `enabled` tinyint(1) NOT NULL DEFAULT 1,
   `required_club_level` int(11) NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `id` (`id`) USING BTREE,
-  KEY `order_num` (`order_num`) USING BTREE
-) ENGINE=InnoDB AUTO_INCREMENT=912364 DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+  UNIQUE KEY `link` (`link`),
+  KEY `tree` (`parent_id`,`position`,`id`),
+  KEY `fk_catalog_pages_permission` (`required_permission`),
+  CONSTRAINT `fk_catalog_pages_parent` FOREIGN KEY (`parent_id`) REFERENCES `catalog_pages` (`id`),
+  CONSTRAINT `fk_catalog_pages_permission` FOREIGN KEY (`required_permission`) REFERENCES `acl_permissions` (`key`)
+) ENGINE=InnoDB AUTO_INCREMENT=912363 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -515,7 +569,7 @@ CREATE TABLE `club_gift_claims` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT,
   `user_id` int(11) NOT NULL,
   `gift_number` int(11) NOT NULL,
-  `catalog_item_id` int(11) NOT NULL,
+  `offer_id` int(11) NOT NULL,
   `claimed_at` datetime(6) DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `user_id` (`user_id`,`gift_number`)
@@ -524,10 +578,11 @@ CREATE TABLE `club_gift_claims` (
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
 CREATE TABLE `club_gift_offers` (
-  `catalog_item_id` int(11) NOT NULL,
+  `offer_id` int(11) NOT NULL,
   `days_required` int(11) NOT NULL DEFAULT 0,
   `enabled` tinyint(1) NOT NULL DEFAULT 1,
-  PRIMARY KEY (`catalog_item_id`)
+  PRIMARY KEY (`offer_id`),
+  CONSTRAINT `fk_club_gift_offers_offer` FOREIGN KEY (`offer_id`) REFERENCES `catalog_offers` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
