@@ -21,10 +21,12 @@ final class PlusPlayerProjection
             SELECT users.id, users.username, users.password, users.mail,
                 COALESCE(UNIX_TIMESTAMP(users.account_created), 0), COALESCE(UNIX_TIMESTAMP(users.last_online), 0),
                 COALESCE(users.motto, ''), COALESCE(users.look, ''), COALESCE(users.gender, 'M'),
-                COALESCE(active_roles.security_level, 1), active_roles.role_id, users.credits, users.activity_points, users.gotw_points,
+                COALESCE(active_roles.security_level, 1), active_roles.role_id, users.credits, COALESCE(duckets.amount, 0), COALESCE(gotw_points.amount, 0),
                 users.online, COALESCE(users.ip_reg, ''), COALESCE(users.ip_last, ''), COALESCE(users_settings.home_room, 0)
             FROM users
             LEFT JOIN users_settings ON users_settings.user_id = users.id
+            LEFT JOIN user_currencies AS duckets ON duckets.user_id = users.id AND duckets.type = 0
+            LEFT JOIN user_currencies AS gotw_points ON gotw_points.user_id = users.id AND gotw_points.type = 103
             LEFT JOIN (
                 SELECT user_roles.user_id, MAX(roles.security_level) AS security_level,
                     CAST(SUBSTRING_INDEX(GROUP_CONCAT(roles.id ORDER BY roles.security_level DESC, roles.weight DESC, roles.id), ',', 1) AS UNSIGNED) AS role_id
@@ -67,13 +69,18 @@ final class PlusPlayerProjection
             'last_online' => $this->unix($native->last_online), 'motto' => $native->motto ?? '',
             'look' => $native->look ?? '', 'gender' => $native->gender ?? 'M', 'rank' => (int) ($activeRole->security_level ?? 1),
             'native_role_id' => $activeRole->id ?? null,
-            'credits' => (int) $native->credits, 'pixels' => (int) $native->activity_points,
-            'points' => (int) $native->gotw_points, 'online' => (bool) $native->online,
+            'credits' => (int) $native->credits, 'pixels' => $this->currency((int) $native->id, PlusCurrencyRepository::DUCKETS),
+            'points' => $this->currency((int) $native->id, PlusCurrencyRepository::GOTW_POINTS), 'online' => (bool) $native->online,
             'ip_register' => $native->ip_reg ?? '', 'ip_current' => $native->ip_last ?? '',
             'home_room' => (int) ($native->home_room ?? 0),
         ]);
 
         return User::query()->find((int) $native->id);
+    }
+
+    private function currency(int $userId, int $type): int
+    {
+        return (int) (DB::table('user_currencies')->where('user_id', $userId)->where('type', $type)->value('amount') ?? 0);
     }
 
     private function unix(mixed $value): int

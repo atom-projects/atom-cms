@@ -11,7 +11,7 @@ use function Laravel\Prompts\info;
 
 final class PlusInstaller implements EmulatorInstaller
 {
-    private const REQUIRED_TABLES = ['users', 'users_settings', 'user_statistics', 'user_badges', 'items', 'furniture', 'catalog_offers', 'catalog_offer_products', 'catalog_offer_limited', 'rooms', 'bans', 'roles', 'user_roles', 'user_access_tokens', 'user_remember_tokens', 'user_sessions'];
+    private const REQUIRED_TABLES = ['users', 'user_currencies', 'users_settings', 'user_statistics', 'user_badges', 'items', 'furniture', 'catalog_offers', 'catalog_offer_products', 'catalog_offer_limited', 'rooms', 'bans', 'roles', 'user_roles', 'user_access_tokens', 'user_remember_tokens', 'user_sessions'];
 
     public function prepare(Command $command): bool
     {

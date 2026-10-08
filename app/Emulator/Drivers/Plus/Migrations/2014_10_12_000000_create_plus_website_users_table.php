@@ -47,8 +47,12 @@ return new class extends Migration
             $table->unsignedInteger('extra_rank')->nullable();
         });
 
-        DB::table('users')->leftJoin('users_settings', 'users_settings.user_id', '=', 'users.id')->orderBy('users.id')
-            ->select(['users.*', 'users_settings.home_room'])->chunk(250, function ($rows): void {
+        // Duckets (type 0) and GOTW points (type 103) live in user_currencies since PlusEMU migration 59.
+        DB::table('users')->leftJoin('users_settings', 'users_settings.user_id', '=', 'users.id')
+            ->leftJoin('user_currencies as duckets', fn ($join) => $join->on('duckets.user_id', '=', 'users.id')->where('duckets.type', '=', 0))
+            ->leftJoin('user_currencies as gotw_points', fn ($join) => $join->on('gotw_points.user_id', '=', 'users.id')->where('gotw_points.type', '=', 103))
+            ->orderBy('users.id')
+            ->select(['users.*', 'users_settings.home_room', 'duckets.amount as duckets', 'gotw_points.amount as gotw_points'])->chunk(250, function ($rows): void {
                 $activeRoles = DB::table('user_roles')->join('roles', 'roles.id', '=', 'user_roles.role_id')
                     ->whereIn('user_id', $rows->pluck('id'))
                     ->where(fn ($query) => $query->whereNull('expires_at')->orWhere('expires_at', '>', now('UTC')->format('Y-m-d H:i:s.u')))
@@ -61,7 +65,7 @@ return new class extends Migration
                     'look' => $row->look ?? '', 'gender' => $row->gender ?? 'M',
                     'rank' => (int) ($activeRoles[$row->id]->security_level ?? 1),
                     'native_role_id' => $activeRoles[$row->id]->role_id ?? null, 'credits' => (int) $row->credits,
-                    'pixels' => (int) $row->activity_points, 'points' => (int) $row->gotw_points,
+                    'pixels' => (int) ($row->duckets ?? 0), 'points' => (int) ($row->gotw_points ?? 0),
                     'online' => (bool) $row->online, 'ip_register' => $row->ip_reg ?? '',
                     'ip_current' => $row->ip_last ?? '', 'home_room' => (int) ($row->home_room ?? 0),
                 ])->all());

@@ -38,10 +38,10 @@ final class PlusPlayerRepository implements AllocatesPlayerIdentity, PlayerRepos
             DB::table('users')->insert([
                 'id' => $user->id, 'username' => $user->username, 'password' => $user->password,
                 'mail' => $user->mail, 'auth_ticket' => '', 'rank' => $this->securityLevel((int) $user->rank),
-                'credits' => (int) $user->credits, 'vip_points' => 0, 'activity_points' => 0,
+                'credits' => (int) $user->credits,
                 'look' => $user->look, 'gender' => $user->gender ?: 'M', 'motto' => $user->motto,
                 'account_created' => now(), 'last_online' => now(), 'online' => false,
-                'ip_last' => $user->ip_current, 'ip_reg' => $user->ip_register, 'gotw_points' => 0,
+                'ip_last' => $user->ip_current, 'ip_reg' => $user->ip_register,
             ]);
             DB::table('user_roles')->insertOrIgnore(['user_id' => $user->id, 'role_id' => $this->roleId((int) $user->rank), 'created_at' => now()]);
         });
@@ -106,10 +106,13 @@ final class PlusPlayerRepository implements AllocatesPlayerIdentity, PlayerRepos
         }
         $native = DB::table('users')->leftJoin('users_settings', 'users_settings.user_id', '=', 'users.id')
             ->whereIn('users.id', $byId->keys())->get([
-                'users.id', 'users.username', 'users.password', 'users.mail', 'users.credits', 'users.activity_points',
-                'users.vip_points', 'users.gotw_points', 'users.look', 'users.gender', 'users.motto', 'users.account_created',
-                'users.last_online', 'users.online', 'users.ip_last', 'users.ip_reg', 'users_settings.home_room',
+                'users.id', 'users.username', 'users.password', 'users.mail', 'users.credits', 'users.look', 'users.gender',
+                'users.motto', 'users.account_created', 'users.last_online', 'users.online', 'users.ip_last', 'users.ip_reg',
+                'users_settings.home_room',
             ])->keyBy('id');
+        $currencies = DB::table('user_currencies')->whereIn('user_id', $byId->keys())
+            ->whereIn('type', [PlusCurrencyRepository::DUCKETS, PlusCurrencyRepository::GOTW_POINTS])->get(['user_id', 'type', 'amount'])
+            ->mapWithKeys(fn (object $row): array => [$row->user_id . ':' . $row->type => (int) $row->amount]);
         $roles = DB::table('user_roles')->join('roles', 'roles.id', '=', 'user_roles.role_id')->whereIn('user_id', $byId->keys())
             ->where(fn (QueryBuilder $query) => $query->whereNull('expires_at')->orWhere('expires_at', '>', $this->utcNow()))
             ->orderByDesc('roles.security_level')->orderByDesc('roles.weight')->orderBy('roles.id')
@@ -120,8 +123,8 @@ final class PlusPlayerRepository implements AllocatesPlayerIdentity, PlayerRepos
             }
             $user->setRawAttributes(array_merge($user->getAttributes(), [
                 'username' => $row->username, 'password' => $row->password, 'mail' => $row->mail,
-                'credits' => (int) $row->credits, 'pixels' => (int) $row->activity_points,
-                'points' => (int) $row->gotw_points, 'look' => $row->look ?? '', 'gender' => $row->gender ?? 'M',
+                'credits' => (int) $row->credits, 'pixels' => $currencies[$id . ':' . PlusCurrencyRepository::DUCKETS] ?? 0,
+                'points' => $currencies[$id . ':' . PlusCurrencyRepository::GOTW_POINTS] ?? 0, 'look' => $row->look ?? '', 'gender' => $row->gender ?? 'M',
                 'motto' => $row->motto ?? '', 'account_created' => $this->unix($row->account_created),
                 'last_online' => $this->unix($row->last_online), 'online' => (bool) $row->online,
                 'ip_current' => $row->ip_last ?? '', 'ip_register' => $row->ip_reg ?? '',
