@@ -120,6 +120,20 @@ function makeAdaFurnitureItem(string $name = 'Ada chair'): int
     ]);
 }
 
+/**
+ * PlusEMU rooms reference their owner, layout and navigator category (0 is
+ * the emulator's "no category" row), so a room needs all three.
+ *
+ * @param  array<string, mixed>  $attributes  Extra rooms columns.
+ */
+function makePlusRoom(int $ownerId, array $attributes = []): int
+{
+    DB::table('navigator_categories')->insertOrIgnore(['id' => 0]);
+    DB::table('room_models')->insertOrIgnore(['id' => 'model_a', 'door_x' => 0, 'door_y' => 0, 'door_z' => 0, 'heightmap' => 'xxx', 'public_items' => '']);
+
+    return (int) DB::table('rooms')->insertGetId(['caption' => 'Room', 'owner' => $ownerId, 'description' => '', 'model_name' => 'model_a', ...$attributes]);
+}
+
 function makeAdaRoom(int $ownerId, ?int $accessType = null): int
 {
     $layoutId = (int) DB::table('room_layouts')->insertGetId([

@@ -129,7 +129,7 @@ test('player hydration and the projection read duckets and gotw points from user
     ]);
 
     $fresh = User::query()->findOrFail($user->id);
-    app(PlusPlayerProjection::class)->synchronize();
+    app(PlusPlayerProjection::class)->synchronize([$user->id]);
     $projected = DB::table('website_users')->where('id', $user->id)->first();
 
     expect((int) $fresh->pixels)->toBe(321)
@@ -145,7 +145,7 @@ test('native users imported after installation bring their user_currencies balan
         ['user_id' => $id, 'type' => 103, 'amount' => 6],
     ]);
 
-    app(PlusPlayerProjection::class)->import('NativeRich');
+    User::query()->where('username', 'NativeRich')->firstOrFail();
     $projected = DB::table('website_users')->where('id', $id)->first();
 
     expect((int) $projected->pixels)->toBe(55)

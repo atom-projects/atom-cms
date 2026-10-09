@@ -16,6 +16,7 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Filament\Support\Exceptions\Halt;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use LogicException;
@@ -27,15 +28,39 @@ class EditUser extends EditRecord
      * housekeeping editor may still change them once beforeSave() has verified
      * the actor's authority, so they are persisted through forceFill().
      */
-    private const PRIVILEGED_ATTRIBUTES = ['rank', 'credits', 'hidden_staff', 'extra_rank', 'auth_ticket', 'team_id'];
+    private const PRIVILEGED_ATTRIBUTES = ['rank', 'credits', 'hidden_staff', 'auth_ticket', 'team_id'];
+
+    /** MariaDB/MySQL error for deleting a row a foreign key still restricts. */
+    private const ROW_IS_REFERENCED = 1451;
 
     protected static string $resource = UserResource::class;
 
     protected function getHeaderActions(): array
     {
         return [
-            DeleteAction::make(),
+            DeleteAction::make()
+                ->using(fn (User $record): bool => $this->deleteUser($record))
+                ->failureNotificationTitle(__('This user still owns rooms or groups, or has payment records, and cannot be deleted. Transfer or remove those first.')),
         ];
+    }
+
+    /**
+     * Atom's row and the emulator's player are removed together or not at all.
+     * Rows that must outlive a delete (owned rooms and groups, PayPal
+     * transactions) make the database refuse it, which rolls back Atom's half
+     * as well. Everything else the player owns cascades with the users row.
+     */
+    private function deleteUser(User $user): bool
+    {
+        try {
+            return DB::transaction(fn (): bool => (bool) $user->delete());
+        } catch (QueryException $exception) {
+            if (($exception->errorInfo[1] ?? null) === self::ROW_IS_REFERENCED) {
+                return false;
+            }
+
+            throw $exception;
+        }
     }
 
     protected function mutateFormDataBeforeFill(array $data): array

@@ -4,10 +4,10 @@ use App\Emulator\Contracts\BadgeRepository;
 use App\Emulator\Contracts\BanRepository;
 use App\Emulator\Contracts\CurrencyRepository;
 use App\Emulator\Contracts\FurnitureRepository;
+use App\Emulator\Contracts\PlayerRepository;
 use App\Emulator\Contracts\PlayerStatsRepository;
 use App\Emulator\Contracts\RoomRepository;
 use App\Emulator\Data\Stat;
-use App\Emulator\Drivers\Plus\PlusPlayerProjection;
 use App\Enums\CurrencyTypes;
 use App\Models\User;
 use App\Services\Auth\PasswordHasher;
@@ -23,7 +23,11 @@ beforeEach(function () {
 });
 
 test('registration writes native plus identity and aggregate rows', function () {
+    $owner = User::factory()->create();
+    makePlusRoom($owner->id, ['id' => 44]);
+    makePlusRoom($owner->id, ['id' => 45]);
     $user = User::factory()->create(['credits' => 1500, 'home_room' => 44]);
+    $homeless = User::factory()->create(['home_room' => 4040]);
 
     expect(DB::table('users')->where('id', $user->id)->value('username'))->toBe($user->username)
         ->and(DB::table('users')->where('id', $user->id)->value('password'))->toStartWith('$argon2id$')
@@ -33,7 +37,8 @@ test('registration writes native plus identity and aggregate rows', function () 
         ->and(DB::table('user_roles')->where('user_id', $user->id)->value('role_id'))->toBe(1);
 
     $user->forceFill(['home_room' => 45])->save();
-    expect(DB::table('users_settings')->where('user_id', $user->id)->value('home_room'))->toBe(45);
+    expect(DB::table('users_settings')->where('user_id', $user->id)->value('home_room'))->toBe(45)
+        ->and(DB::table('users_settings')->where('user_id', $homeless->id)->value('home_room'))->toBe(0);
 });
 
 test('plus furniture is limited when an offer selling it has a limited stock', function () {
@@ -64,7 +69,7 @@ test('plus repositories use final native columns', function () {
     app(BadgeRepository::class)->grant($user, 'ACH_Test1');
     $item = DB::table('furniture')->insertGetId(['item_name' => 'chair']);
     app(FurnitureRepository::class)->grant($user, $item, 2);
-    DB::table('rooms')->insert(['caption' => 'Suite', 'owner' => (string) $user->id, 'description' => 'Plus room', 'state' => 'locked', 'model_name' => 'model_a']);
+    makePlusRoom($user->id, ['caption' => 'Suite', 'description' => 'Plus room', 'state' => 'locked']);
     DB::table('user_statistics')->where('id', $user->id)->update(['AchievementScore' => 99]);
 
     expect(app(CurrencyRepository::class)->balance($user, CurrencyTypes::Duckets))->toBe(25)
@@ -90,8 +95,8 @@ test('password changes revoke every native plus credential', function () {
     $user = User::factory()->create();
     DB::table('users')->where('id', $user->id)->update(['auth_ticket' => 'old-ticket', 'auth_ticket_expires_at' => now()->addMinute()]);
     DB::table('user_access_tokens')->insert(['user_id' => $user->id, 'token_hash' => str_repeat('a', 64)]);
+    DB::table('user_sessions')->insert([['id' => str_repeat('c', 32), 'user_id' => $user->id], ['id' => str_repeat('f', 32), 'user_id' => $user->id]]);
     DB::table('user_remember_tokens')->insert(['user_id' => $user->id, 'family_id' => str_repeat('f', 32), 'token_hash' => str_repeat('b', 64)]);
-    DB::table('user_sessions')->insert(['id' => str_repeat('c', 32), 'user_id' => $user->id]);
 
     $user->changePassword('A-new-password!123');
     $native = DB::table('users')->where('id', $user->id)->first();
@@ -204,26 +209,25 @@ test('native users added after installation are projected without id collisions'
     DB::table('user_statistics')->insert(['id' => 500]);
     DB::table('user_roles')->insert(['user_id' => 500, 'role_id' => 1, 'created_at' => now()]);
 
-    $native = app(PlusPlayerProjection::class)->import('NativeLater');
+    $native = User::query()->where('username', 'NativeLater')->first();
     $cms = User::factory()->create();
 
     expect($native?->id)->toBe(500)
         ->and(app(PasswordVerifier::class)->verify($native, 'Native-password!123'))->toBeTrue()
-        ->and($cms->id)->toBe(501)
-        ->and(DB::table('users')->where('id', 501)->exists())->toBeTrue();
+        ->and($cms->id)->toBeGreaterThan(500)
+        ->and(DB::table('users')->where('id', $cms->id)->value('username'))->toBe($cms->username);
 });
 
-test('queries reconcile native inserts updates and deletes before filtering and counting', function () {
+test('queries reconcile native inserts updates and deletes for the players they can reach', function () {
     $first = User::factory()->create(['credits' => 10]);
     $deleted = User::factory()->create();
+    $this->travel(1)->minute();
     DB::table('users')->where('id', $first->id)->update(['credits' => 9000, 'online' => true]);
     DB::table('users')->insert(['id' => 700, 'username' => 'NativeQuery', 'password' => null, 'mail' => $first->mail, 'credits' => 8000, 'online' => true]);
     DB::table('users')->where('id', $deleted->id)->delete();
 
-    $richest = User::query()->where('credits', '>=', 8000)->orderByDesc('credits')->pluck('id')->all();
-
-    expect($richest)->toBe([$first->id, 700])
-        ->and(User::query()->where('online', true)->count())->toBe(2)
+    expect(User::query()->whereKey([$first->id, 700])->where('credits', '>=', 8000)->orderByDesc('credits')->pluck('id')->all())->toBe([$first->id, 700])
+        ->and(app(PlayerRepository::class)->whereOnline(User::query())->count())->toBe(2)
         ->and(User::query()->find($deleted->id))->toBeNull()
-        ->and(DB::table('website_users')->where('id', $deleted->id)->exists())->toBeTrue();
+        ->and(DB::table('website_users')->where('id', $deleted->id)->exists())->toBeFalse();
 });

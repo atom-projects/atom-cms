@@ -12,7 +12,7 @@ final class PlusRoomRepository implements RoomRepository
 {
     public function forHome(User $user): Collection
     {
-        return DB::table('rooms')->where('owner', (string) $user->id)->get(['id', 'caption', 'description', 'state'])
+        return DB::table('rooms')->where('owner', $user->id)->get(['id', 'caption', 'description', 'state'])
             ->map(fn (object $room) => new RoomSummary((int) $room->id, (string) $room->caption, (string) $room->description, (string) $room->state));
     }
 

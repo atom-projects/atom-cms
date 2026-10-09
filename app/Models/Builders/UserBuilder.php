@@ -14,7 +14,8 @@ use Illuminate\Support\Str;
 /**
  * Gives the active emulator driver one hook per user query instead of one per
  * user. Drivers that mirror emulator state into Atom's users table refresh the
- * whole result set here; drivers that own the table outright do nothing.
+ * rows the query can reach and hydrate its result set; drivers that own the
+ * table outright do nothing.
  *
  * @extends Builder<User>
  */

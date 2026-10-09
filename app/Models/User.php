@@ -198,12 +198,9 @@ class User extends Authenticatable implements FilamentUser, HasName
 
     protected $fillable = [
         'username',
-        'real_name',
         'password',
         'mail',
-        'mail_verified',
         'account_created',
-        'account_day_of_birth',
         'last_login',
         'last_online',
         'motto',

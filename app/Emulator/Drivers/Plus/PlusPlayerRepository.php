@@ -3,6 +3,7 @@
 namespace App\Emulator\Drivers\Plus;
 
 use App\Emulator\Contracts\AllocatesPlayerIdentity;
+use App\Emulator\Contracts\CreatesPlayerBeforeUser;
 use App\Emulator\Contracts\PlayerRepository;
 use App\Emulator\Contracts\PreparesPlayerQueries;
 use App\Emulator\Data\HomeFriend;
@@ -10,18 +11,29 @@ use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use RuntimeException;
+use stdClass;
 
-final class PlusPlayerRepository implements AllocatesPlayerIdentity, PlayerRepository, PreparesPlayerQueries
+final class PlusPlayerRepository implements AllocatesPlayerIdentity, CreatesPlayerBeforeUser, PlayerRepository, PreparesPlayerQueries
 {
+    public function __construct(private readonly PlusPlayerProjection $projection) {}
+
+    /**
+     * website_users rows reference users.id, so a projected row always has a
+     * native player behind it; the query only needs its candidates refreshed.
+     */
     public function prepareQuery(Builder $query): void
     {
-        app(PlusPlayerProjection::class)->synchronize();
-        $query->whereIn($query->getModel()->getQualifiedKeyName(), DB::table('users')->select('id'));
+        $this->projection->synchronizeNewPlayers();
+        $query->getQuery()->beforeQuery(fn (QueryBuilder $base) => $this->projection->synchronizeMatching($base));
+    }
+
+    public function synchronizeAll(): int
+    {
+        return $this->projection->synchronizeAll();
     }
 
     public function allocateIdentity(): array
@@ -32,25 +44,36 @@ final class PlusPlayerRepository implements AllocatesPlayerIdentity, PlayerRepos
         ) + 1];
     }
 
-    public function created(User $user): void
+    /**
+     * The native player is the parent row, so it is written first and Atom's
+     * row takes its id.
+     */
+    public function creating(User $user): void
     {
         DB::transaction(function () use ($user): void {
-            DB::table('users')->insert([
-                'id' => $user->id, 'username' => $user->username, 'password' => $user->password,
+            $values = [
+                'username' => $user->username, 'password' => $user->password,
                 'mail' => $user->mail, 'auth_ticket' => '', 'rank' => $this->securityLevel((int) $user->rank),
                 'credits' => (int) $user->credits,
                 'look' => $user->look, 'gender' => $user->gender ?: 'M', 'motto' => $user->motto,
                 'account_created' => now(), 'last_online' => now(), 'online' => false,
                 'ip_last' => $user->ip_current, 'ip_reg' => $user->ip_register,
-            ]);
-            DB::table('user_roles')->insertOrIgnore(['user_id' => $user->id, 'role_id' => $this->roleId((int) $user->rank), 'created_at' => now()]);
+            ];
+            if ($user->getKey() === null) {
+                $user->setAttribute($user->getKeyName(), (int) DB::table('users')->insertGetId($values));
+            } else {
+                DB::table('users')->insert(['id' => $user->getKey(), ...$values]);
+            }
+            DB::table('user_roles')->insertOrIgnore(['user_id' => $user->getKey(), 'role_id' => $this->roleId((int) $user->rank), 'created_at' => now()]);
         });
     }
+
+    public function created(User $user): void {}
 
     public function updated(User $user): void
     {
         $values = [];
-        foreach (['username' => 'username', 'password' => 'password', 'mail' => 'mail', 'look' => 'look', 'motto' => 'motto', 'gender' => 'gender', 'ip_current' => 'ip_last'] as $attribute => $column) {
+        foreach (['username' => 'username', 'password' => 'password', 'mail' => 'mail', 'credits' => 'credits', 'look' => 'look', 'motto' => 'motto', 'gender' => 'gender', 'ip_current' => 'ip_last'] as $attribute => $column) {
             if ($user->wasChanged($attribute)) {
                 $values[$column] = $user->getAttribute($attribute);
             }
@@ -104,33 +127,11 @@ final class PlusPlayerRepository implements AllocatesPlayerIdentity, PlayerRepos
         if ($byId->isEmpty()) {
             return;
         }
-        $native = DB::table('users')->leftJoin('users_settings', 'users_settings.user_id', '=', 'users.id')
-            ->whereIn('users.id', $byId->keys())->get([
-                'users.id', 'users.username', 'users.password', 'users.mail', 'users.credits', 'users.look', 'users.gender',
-                'users.motto', 'users.account_created', 'users.last_online', 'users.online', 'users.ip_last', 'users.ip_reg',
-                'users_settings.home_room',
-            ])->keyBy('id');
-        $currencies = DB::table('user_currencies')->whereIn('user_id', $byId->keys())
-            ->whereIn('type', [PlusCurrencyRepository::DUCKETS, PlusCurrencyRepository::GOTW_POINTS])->get(['user_id', 'type', 'amount'])
-            ->mapWithKeys(fn (object $row): array => [$row->user_id . ':' . $row->type => (int) $row->amount]);
-        $roles = DB::table('user_roles')->join('roles', 'roles.id', '=', 'user_roles.role_id')->whereIn('user_id', $byId->keys())
-            ->where(fn (QueryBuilder $query) => $query->whereNull('expires_at')->orWhere('expires_at', '>', $this->utcNow()))
-            ->orderByDesc('roles.security_level')->orderByDesc('roles.weight')->orderBy('roles.id')
-            ->get(['user_id', 'role_id', 'roles.security_level'])->unique('user_id')->keyBy('user_id');
+        $native = $this->projection->nativeAttributes($byId->keys()->all());
         foreach ($byId as $id => $user) {
-            if (($row = $native->get($id)) === null) {
-                continue;
+            if (isset($native[$id])) {
+                $user->setRawAttributes(array_merge($user->getAttributes(), $native[$id]), true);
             }
-            $user->setRawAttributes(array_merge($user->getAttributes(), [
-                'username' => $row->username, 'password' => $row->password, 'mail' => $row->mail,
-                'credits' => (int) $row->credits, 'pixels' => $currencies[$id . ':' . PlusCurrencyRepository::DUCKETS] ?? 0,
-                'points' => $currencies[$id . ':' . PlusCurrencyRepository::GOTW_POINTS] ?? 0, 'look' => $row->look ?? '', 'gender' => $row->gender ?? 'M',
-                'motto' => $row->motto ?? '', 'account_created' => $this->unix($row->account_created),
-                'last_online' => $this->unix($row->last_online), 'online' => (bool) $row->online,
-                'ip_current' => $row->ip_last ?? '', 'ip_register' => $row->ip_reg ?? '',
-                'home_room' => (int) ($row->home_room ?? 0), 'rank' => (int) ($roles[$id]->security_level ?? 1),
-                'native_role_id' => $roles[$id]->role_id ?? null,
-            ]), true);
         }
     }
 
@@ -156,14 +157,19 @@ final class PlusPlayerRepository implements AllocatesPlayerIdentity, PlayerRepos
 
     public function onlineFriends(User $user, int $limit): Collection
     {
-        return $this->whereOnline(User::query()->whereKey($this->friendIds($user)))->orderByDesc('last_online')->limit($limit)->get();
+        $ids = DB::table('users')->whereIn('id', $this->friendIds($user))->where('online', true)
+            ->orderByDesc('last_online')->limit($limit)->pluck('id')->map(fn (mixed $id): int => (int) $id);
+        $friends = User::query()->whereKey($ids->all())->get()->keyBy('id');
+
+        return $ids->map(fn (int $id): ?User => $friends->get($id))->filter()->values();
     }
 
     public function friendsForHome(User $user, int $perPage, string $pageName): LengthAwarePaginator
     {
-        $page = User::query()->whereKey($this->friendIds($user))->orderBy('username')->paginate($perPage, ['*'], $pageName);
+        $page = DB::table('users')->whereIn('id', $this->friendIds($user))->orderBy('username')->paginate($perPage, ['id'], $pageName);
+        $friends = User::query()->whereKey($page->getCollection()->pluck('id')->all())->get()->keyBy('id');
 
-        return $page->through(fn (User $friend) => new HomeFriend($friend));
+        return $page->through(fn (stdClass $row) => new HomeFriend($friends->get($row->id)));
     }
 
     /** @return Collection<int, int> */
@@ -188,15 +194,5 @@ final class PlusPlayerRepository implements AllocatesPlayerIdentity, PlayerRepos
             ->when($securityLevel > 1, fn (QueryBuilder $query) => $query->orderByDesc('weight'))
             ->orderBy('id')
             ->value('id') ?? throw new RuntimeException("PlusEMU has no role for security level {$securityLevel}."));
-    }
-
-    private function unix(mixed $value): int
-    {
-        return $value === null ? 0 : Carbon::parse($value)->unix();
-    }
-
-    private function utcNow(): string
-    {
-        return now('UTC')->format('Y-m-d H:i:s.u');
     }
 }

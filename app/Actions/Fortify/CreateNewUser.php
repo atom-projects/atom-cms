@@ -16,6 +16,7 @@ use App\Rules\GoogleRecaptchaRule;
 use App\Rules\WebsiteWordfilterRule;
 use App\Services\Auth\PasswordHasher;
 use App\Services\Auth\RegistrationMutex;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -100,8 +101,7 @@ class CreateNewUser implements CreatesNewUsers
         $this->ensureRegistrationIsOpen($ip);
 
         $matchingIpCount = User::query()
-            ->where('ip_current', $ip)
-            ->orWhere('ip_register', $ip)
+            ->where(fn (Builder $query) => $query->where('ip_current', $ip)->orWhere('ip_register', $ip))
             ->count();
 
         if ($matchingIpCount >= (int) (setting('max_accounts_per_ip') ?: 99)) {
