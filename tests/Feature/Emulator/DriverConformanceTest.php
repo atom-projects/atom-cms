@@ -47,7 +47,7 @@ test('registered drivers satisfy the complete driver contract', function (string
     }
 })->with('emulator drivers');
 
-test('the registry exposes driver labels and ada owns its compatibility migrations', function () {
+test('the registry exposes driver labels and ada owns its migrations', function () {
     $manager = app(EmulatorManager::class);
     $migrationNames = collect($manager->driver('ada')->migrationPaths())
         ->flatMap(fn (string $path) => glob($path . '/*.php') ?: [])
@@ -58,10 +58,9 @@ test('the registry exposes driver labels and ada owns its compatibility migratio
         'ada' => 'Ada',
         'plus' => 'PlusEMU',
     ])->and($migrationNames)->toContain(
-        '2014_10_12_000000_create_ada_users_compatibility_table.php',
-        '2014_10_12_000001_create_ada_camera_compatibility_table.php',
         '2026_07_23_000000_use_ada_roles_for_staff_applications.php',
         '2026_07_24_000000_use_ada_roles_for_shop_articles.php',
+        '2026_10_09_000000_map_atom_users_onto_ada_players.php',
     );
 });
 

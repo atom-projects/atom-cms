@@ -22,9 +22,7 @@ class ArcturusPlayerRepository implements PlayerRepository
 
     public function updated(User $user): void {}
 
-    public function deleted(User $user): void {}
-
-    public function hydrateMany(array $users): void {}
+    public function deleting(User $user): void {}
 
     public function whereOnline(Builder $query): Builder
     {

@@ -1,6 +1,5 @@
 <?php
 
-use App\Models\User;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -11,10 +10,10 @@ return new class extends Migration
 {
     public function up(): void
     {
-        $users = (new User)->getTable();
+        $users = cmsUserTable();
         if (! Schema::hasColumn($users, 'referral_code')) {
             Schema::table($users, function (Blueprint $table) {
-                $table->string('referral_code')->nullable()->unique()->after('home_room');
+                $table->string('referral_code')->nullable()->unique();
             });
         }
 
@@ -30,8 +29,9 @@ return new class extends Migration
 
     public function down(): void
     {
-        if (Schema::hasColumn('users', 'referral_code')) {
-            Schema::table('users', function (Blueprint $table) {
+        $users = cmsUserTable();
+        if (Schema::hasColumn($users, 'referral_code')) {
+            Schema::table($users, function (Blueprint $table) {
                 $table->dropColumn('referral_code');
             });
         }

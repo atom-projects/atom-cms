@@ -10,11 +10,11 @@ return new class extends Migration
     {
         Schema::create('website_used_shop_vouchers', function (Blueprint $table) {
             $table->id();
-            $table->integer('user_id');
+            $table->playerId('user_id');
             $table->unsignedBigInteger('voucher_id');
             $table->timestamps();
 
-            $table->foreign('user_id')->references('id')->on('users')->cascadeOnDelete();
+            $table->foreignPlayer('user_id')->cascadeOnDelete();
             $table->foreign('voucher_id')->references('id')->on('website_shop_vouchers')->cascadeOnDelete();
         });
     }

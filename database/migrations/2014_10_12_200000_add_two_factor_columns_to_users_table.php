@@ -1,6 +1,5 @@
 <?php
 
-use App\Models\User;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -13,7 +12,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        $users = (new User)->getTable();
+        $users = cmsUserTable();
         $addSecret = ! Schema::hasColumn($users, 'two_factor_secret');
         $addRecoveryCodes = ! Schema::hasColumn($users, 'two_factor_recovery_codes');
         $addConfirmedAt = Fortify::confirmsTwoFactorAuthentication()
@@ -45,7 +44,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('users', function (Blueprint $table) {
+        $users = cmsUserTable();
+        Schema::table($users, function (Blueprint $table) {
             $table->dropColumn(array_merge([
                 'two_factor_secret',
                 'two_factor_recovery_codes',

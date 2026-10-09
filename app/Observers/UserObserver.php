@@ -3,7 +3,6 @@
 namespace App\Observers;
 
 use App\Actions\Home\CreateDefaultHome;
-use App\Emulator\Contracts\CreatesPlayerBeforeUser;
 use App\Emulator\Contracts\CurrencyRepository;
 use App\Emulator\Contracts\PlayerRepository;
 use App\Emulator\Contracts\PlayerSettingsRepository;
@@ -18,13 +17,6 @@ class UserObserver
         private readonly PlayerSettingsRepository $settings,
         private readonly CreateDefaultHome $defaultHome,
     ) {}
-
-    public function creating(User $user): void
-    {
-        if ($this->players instanceof CreatesPlayerBeforeUser) {
-            $this->players->creating($user);
-        }
-    }
 
     public function created(User $user): void
     {
@@ -42,9 +34,9 @@ class UserObserver
         $this->players->updated($user);
     }
 
-    public function deleted(User $user): void
+    public function deleting(User $user): void
     {
-        $this->players->deleted($user);
+        $this->players->deleting($user);
     }
 
     /**

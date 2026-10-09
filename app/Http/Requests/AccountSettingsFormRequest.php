@@ -10,7 +10,6 @@ use App\Rules\GoogleRecaptchaRule;
 use App\Rules\WebsiteWordfilterRule;
 use App\Support\AuthenticatedUser;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 class AccountSettingsFormRequest extends FormRequest
 {
@@ -19,8 +18,8 @@ class AccountSettingsFormRequest extends FormRequest
     {
         $user = AuthenticatedUser::from($this);
         $rules = [
-            'username' => ['sometimes', 'string', sprintf('regex:%s', setting('username_regex')), 'min:3', 'max:' . Emulator::constraints()->usernameLength, Rule::unique('users')->ignore($user->id), new WebsiteWordfilterRule],
-            'mail' => ['required', 'email', 'max:' . Emulator::constraints()->emailLength, Rule::unique('users')->ignore($user->id), new WebsiteWordfilterRule],
+            'username' => ['sometimes', 'string', sprintf('regex:%s', setting('username_regex')), 'min:3', 'max:' . Emulator::constraints()->usernameLength, User::uniqueRule('username')->ignore($user), new WebsiteWordfilterRule],
+            'mail' => ['required', 'email', 'max:' . Emulator::constraints()->emailLength, User::uniqueRule('mail')->ignore($user), new WebsiteWordfilterRule],
             'motto' => ['nullable', 'string', 'max:' . Emulator::constraints()->mottoLength, new WebsiteWordfilterRule],
             'g-recaptcha-response' => [new GoogleRecaptchaRule],
             'cf-turnstile-response' => [new CloudflareTurnstileRule],

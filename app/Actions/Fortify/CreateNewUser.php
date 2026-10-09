@@ -3,8 +3,6 @@
 namespace App\Actions\Fortify;
 
 use App\Actions\Fortify\Rules\PasswordValidationRules;
-use App\Emulator\Contracts\AllocatesPlayerIdentity;
-use App\Emulator\Contracts\PlayerRepository;
 use App\Emulator\Contracts\RankRepository;
 use App\Emulator\Emulator;
 use App\Jobs\SendRegisteredUserWebhook;
@@ -14,9 +12,9 @@ use App\Rules\BetaCodeRule;
 use App\Rules\CloudflareTurnstileRule;
 use App\Rules\GoogleRecaptchaRule;
 use App\Rules\WebsiteWordfilterRule;
-use App\Services\Auth\PasswordHasher;
 use App\Services\Auth\RegistrationMutex;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -27,7 +25,7 @@ class CreateNewUser implements CreatesNewUsers
 {
     use PasswordValidationRules;
 
-    public function __construct(private readonly RegistrationMutex $mutex, private readonly PasswordHasher $hasher) {}
+    public function __construct(private readonly RegistrationMutex $mutex) {}
 
     /**
      * Validate and create a newly registered user.
@@ -44,7 +42,7 @@ class CreateNewUser implements CreatesNewUsers
     {
         $ip = $this->ensureRegistrationIsOpen($ip);
         $validated = $this->validate($input);
-        $password = $this->hasher->make($validated['password']);
+        $password = Hash::make($validated['password']);
 
         $user = $this->mutex->run(
             $this->lockIdentifiers($validated, $ip),
@@ -73,7 +71,7 @@ class CreateNewUser implements CreatesNewUsers
     public function createAdministrator(array $input): User
     {
         $validated = $this->validate($input, registration: false);
-        $password = $this->hasher->make($validated['password']);
+        $password = Hash::make($validated['password']);
 
         return $this->mutex->run($this->lockIdentifiers($validated, '127.0.0.1'), function () use ($validated, $password): User {
             $this->ensureIdentityIsAvailable($validated);
@@ -122,10 +120,9 @@ class CreateNewUser implements CreatesNewUsers
         $motto = mb_substr($motto, 0, $constraints->mottoLength);
         $look = mb_substr($look, 0, $constraints->figureLength);
 
-        // credits and auth_ticket are guarded against mass assignment, so this
-        // trusted registration path assigns the full attribute set explicitly.
+        // credits are guarded against mass assignment, so this trusted
+        // registration path assigns the full attribute set explicitly.
         $user = User::query()->forceCreate([
-            ...$this->allocatedIdentity(),
             'username' => $input['username'],
             'mail' => $input['mail'],
             'password' => $password,
@@ -136,7 +133,6 @@ class CreateNewUser implements CreatesNewUsers
             'credits' => setting('start_credits') ?: 1000,
             'ip_register' => $ip,
             'ip_current' => $ip,
-            'auth_ticket' => '',
             'home_room' => (int) (setting('hotel_home_room') ?: 0),
         ]);
 
@@ -201,8 +197,8 @@ class CreateNewUser implements CreatesNewUsers
     private function validate(array $inputs, bool $registration = true): array
     {
         $rules = [
-            'username' => ['required', 'string', sprintf('regex:%s', setting('username_regex') ?: '/^[a-zA-Z0-9_.-]+$/'), 'max:' . Emulator::constraints()->usernameLength, Rule::unique((new User)->getTable()), new WebsiteWordfilterRule],
-            'mail' => ['required', 'string', 'email', 'max:' . Emulator::constraints()->emailLength, Rule::unique((new User)->getTable())],
+            'username' => ['required', 'string', sprintf('regex:%s', setting('username_regex') ?: '/^[a-zA-Z0-9_.-]+$/'), 'max:' . Emulator::constraints()->usernameLength, User::uniqueRule('username'), new WebsiteWordfilterRule],
+            'mail' => ['required', 'string', 'email', 'max:' . Emulator::constraints()->emailLength, User::uniqueRule('mail')],
             'password' => $this->passwordRules(),
         ];
 
@@ -261,20 +257,11 @@ class CreateNewUser implements CreatesNewUsers
      */
     private function lockIdentifiers(array $input, string $ip): array
     {
-        return array_values(array_filter([
-            app(PlayerRepository::class) instanceof AllocatesPlayerIdentity ? 'emulator:user-id' : null,
+        return [
             'ip:' . $ip,
             'mail:' . Str::lower($input['mail']),
             'username:' . Str::lower($input['username']),
-        ]));
-    }
-
-    /** @return array{id: int}|array{} */
-    private function allocatedIdentity(): array
-    {
-        $players = app(PlayerRepository::class);
-
-        return $players instanceof AllocatesPlayerIdentity ? $players->allocateIdentity() : [];
+        ];
     }
 
     /**

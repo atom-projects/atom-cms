@@ -3,12 +3,11 @@
 namespace App\Providers;
 
 use App\Actions\Fortify\CreateNewUser;
-use App\Emulator\Data\Feature;
-use App\Emulator\Emulator;
 use App\Models\Articles\WebsiteArticle;
 use App\Models\Miscellaneous\CameraWeb;
 use App\Models\User;
 use App\Services\Auth\PasswordVerifier;
+use App\Services\Community\CameraService;
 use App\Support\FrontendUrls;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Collection;
@@ -81,28 +80,24 @@ class FortifyServiceProvider extends ServiceProvider
     {
         return [
             'articles' => WebsiteArticle::latest('id')->take($articles)->has('user')->with('user:id,username,look')->get(),
-            'photos' => Emulator::supports(Feature::CameraPhotos)
-                ? CameraWeb::latest('id')->take($photos)->with('user:id,username,look')->get()
-                : new Collection,
+            'photos' => app(CameraService::class)->latestPhotos($photos),
         ];
     }
 
     private function authenticate(): void
     {
-        if (config('emulator.driver') === 'plus') {
-            Fortify::authenticateUsing(function (Request $request): ?User {
-                $username = $request->input('username');
-                $password = $request->input('password');
+        Fortify::authenticateUsing(function (Request $request): ?User {
+            $username = $request->input('username');
+            $password = $request->input('password');
 
-                if (! is_string($username) || ! is_string($password)) {
-                    return null;
-                }
+            if (! is_string($username) || ! is_string($password)) {
+                return null;
+            }
 
-                $user = User::query()->where('username', $username)->first();
+            $user = User::query()->where('username', $username)->first();
 
-                return $user !== null && app(PasswordVerifier::class)->verify($user, $password) ? $user : null;
-            });
-        }
+            return $user !== null && app(PasswordVerifier::class)->verify($user, $password) ? $user : null;
+        });
 
         Fortify::authenticateThrough(function () {
             return array_filter([

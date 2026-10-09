@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('website_paypal_transactions', function (Blueprint $table) {
             $table->id();
 
-            $table->integer('user_id');
+            $table->playerId('user_id');
             $table->string('transaction_id');
             $table->string('status')->nullable();
             $table->string('description', 512)->nullable();
@@ -23,7 +23,7 @@ return new class extends Migration
 
             $table->timestamps();
 
-            $table->foreign('user_id')->references('id')->on('users');
+            $table->foreignPlayer('user_id');
         });
     }
 

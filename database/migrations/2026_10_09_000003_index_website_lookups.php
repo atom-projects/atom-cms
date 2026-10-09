@@ -40,20 +40,34 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::table('user_home_messages', function (Blueprint $table): void {
-            $table->dropIndex(['recipient_user_id', 'created_at']);
-        });
-
-        Schema::table('user_home_items', function (Blueprint $table): void {
-            $table->dropIndex(['user_id', 'placed']);
-        });
-
-        Schema::table('website_staff_applications', function (Blueprint $table): void {
-            $table->dropIndex(['rank_id']);
-        });
+        $this->dropIndexKeepingForeignKey('user_home_messages', ['recipient_user_id', 'created_at']);
+        $this->dropIndexKeepingForeignKey('user_home_items', ['user_id', 'placed']);
+        $this->dropIndexKeepingForeignKey('website_staff_applications', ['rank_id']);
 
         Schema::table('website_password_resets', function (Blueprint $table): void {
             $table->dropPrimary();
+        });
+    }
+
+    /**
+     * MariaDB drops the index it created for a foreign key once another index
+     * leads with the key's column, so that column gets its own index back
+     * before this one goes.
+     *
+     * @param  list<string>  $columns
+     */
+    private function dropIndexKeepingForeignKey(string $table, array $columns): void
+    {
+        $column = $columns[0];
+        $keyed = collect(Schema::getForeignKeys($table))->contains(fn (array $key): bool => $key['columns'] === [$column]);
+        $covered = collect(Schema::getIndexes($table))->contains(fn (array $index): bool => $index['columns'] !== $columns && ($index['columns'][0] ?? null) === $column);
+
+        Schema::table($table, function (Blueprint $blueprint) use ($table, $columns, $column, $keyed, $covered): void {
+            if ($keyed && ! $covered) {
+                $blueprint->index($column, "{$table}_{$column}_foreign");
+            }
+
+            $blueprint->dropIndex($columns);
         });
     }
 };

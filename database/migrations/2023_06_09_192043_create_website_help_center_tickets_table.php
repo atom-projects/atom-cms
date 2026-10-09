@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::create('website_help_center_tickets', function (Blueprint $table) {
             $table->id();
-            $table->integer('user_id')->nullable();
+            $table->playerId('user_id')->nullable();
             $table->unsignedBigInteger('category_id')->nullable();
             $table->string('title');
             $table->text('content');
@@ -18,7 +18,7 @@ return new class extends Migration
 
             $table->timestamps();
 
-            $table->foreign('user_id')->references('id')->on('users')->cascadeOnDelete();
+            $table->foreignPlayer('user_id')->cascadeOnDelete();
             $table->foreign('category_id')->references('id')->on('website_help_center_categories')->cascadeOnDelete();
         });
     }

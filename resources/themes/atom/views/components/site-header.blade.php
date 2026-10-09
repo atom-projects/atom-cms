@@ -1,3 +1,4 @@
+@inject('onlineUsers', 'App\Services\User\UserApiService')
 <div class="relative flex h-52 w-full items-center justify-center header-bg"
     style="background: url({{ setting('cms_header') }});">
     <div class="absolute h-full w-full bg-black/50"></div>
@@ -15,7 +16,7 @@
                     <div class="absolute -left-1 h-6 w-6 rotate-45 bg-white dark:bg-gray-900"></div>
 
                     <span class="relative">
-                        {{ __(':online :hotel online', ['online' => DB::table('users')->where('online', '1')->count(),'hotel' => setting('hotel_name')]) }}
+                        {{ __(':online :hotel online', ['online' => $onlineUsers->onlineUserCount(),'hotel' => setting('hotel_name')]) }}
                     </span>
                 </div>
             </div>

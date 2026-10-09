@@ -1,6 +1,5 @@
 <?php
 
-use App\Models\User;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -9,7 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        $users = (new User)->getTable();
+        $users = cmsUserTable();
         if (! Schema::hasColumn($users, 'team_id')) {
             Schema::table($users, function (Blueprint $table) {
                 $table->unsignedBigInteger('team_id')->nullable();
@@ -25,9 +24,10 @@ return new class extends Migration
 
     public function down(): void
     {
-        dropForeignKeyIfExists('users', 'team_id');
+        $users = cmsUserTable();
+        dropForeignKeyIfExists($users, 'team_id');
 
-        Schema::table('users', function (Blueprint $table) {
+        Schema::table($users, function (Blueprint $table) {
             $table->dropColumn('team_id');
         });
     }

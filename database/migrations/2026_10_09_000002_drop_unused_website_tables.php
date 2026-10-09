@@ -51,12 +51,12 @@ return new class extends Migration
 
         Schema::create('website_user_guestbooks', function (Blueprint $table): void {
             $table->id();
-            $table->integer('profile_id');
-            $table->integer('user_id');
+            $table->playerId('profile_id');
+            $table->playerId('user_id');
             $table->string('message');
             $table->timestamps();
-            $table->foreign('profile_id')->references('id')->on('users')->cascadeOnDelete();
-            $table->foreign('user_id')->references('id')->on('users')->cascadeOnDelete();
+            $table->foreignPlayer('profile_id')->cascadeOnDelete();
+            $table->foreignPlayer('user_id')->cascadeOnDelete();
         });
     }
 };

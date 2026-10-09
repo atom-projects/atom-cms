@@ -10,8 +10,8 @@ return new class extends Migration
     {
         Schema::create('user_home_items', function (Blueprint $table) {
             $table->id();
-            $table->integer('user_id');
-            $table->foreign('user_id')->references('id')->on('users')->cascadeOnDelete();
+            $table->playerId('user_id');
+            $table->foreignPlayer('user_id')->cascadeOnDelete();
             $table->unsignedBigInteger('home_item_id');
             $table->foreign('home_item_id')->references('id')->on('home_items')->cascadeOnDelete();
             $table->integer('x')->default(0);

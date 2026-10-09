@@ -43,9 +43,7 @@ final class EmulatorManager
             return $this->active;
         }
 
-        $key = (string) config('emulator.driver');
-
-        return $this->active = $this->driver($key);
+        return $this->activate($this->driver((string) config('emulator.driver')));
     }
 
     public function select(string $key): EmulatorDriver
@@ -53,7 +51,7 @@ final class EmulatorManager
         $driver = $this->driver($key);
 
         config(['emulator.driver' => $key]);
-        $this->active = $driver;
+        $this->activate($driver);
 
         foreach (self::REPOSITORY_CONTRACTS as $contract) {
             $this->container->forgetInstance($contract);
@@ -62,6 +60,14 @@ final class EmulatorManager
         $this->container->forgetInstance(Rcon::class);
 
         return $driver;
+    }
+
+    /** Passwords are hashed the way the active emulator expects them. */
+    private function activate(EmulatorDriver $driver): EmulatorDriver
+    {
+        config(['hashing.driver' => $driver->passwordHashing()]);
+
+        return $this->active = $driver;
     }
 
     /** @return array<string, class-string<EmulatorDriver>> */
