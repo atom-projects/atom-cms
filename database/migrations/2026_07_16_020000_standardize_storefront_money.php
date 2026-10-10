@@ -1,6 +1,5 @@
 <?php
 
-use App\Models\User;
 use Brick\Money\Currency;
 use Brick\Money\Money;
 use Illuminate\Database\Migrations\Migration;
@@ -13,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         $factor = $this->minorUnitFactor();
-        $users = (new User)->getTable();
+        $users = cmsUserTable();
 
         Schema::table($users, function (Blueprint $table) {
             $table->unsignedBigInteger('website_balance')->default(0)->change();
@@ -63,7 +62,7 @@ return new class extends Migration
     public function down(): void
     {
         $factor = $this->minorUnitFactor();
-        $users = (new User)->getTable();
+        $users = cmsUserTable();
 
         if (
             DB::table($users)->whereRaw('MOD(website_balance, ?) != 0', [$factor])->exists()

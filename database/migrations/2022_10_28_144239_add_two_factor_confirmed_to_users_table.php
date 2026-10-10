@@ -1,6 +1,5 @@
 <?php
 
-use App\Models\User;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -9,7 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        $users = (new User)->getTable();
+        $users = cmsUserTable();
         if (! Schema::hasColumn($users, 'two_factor_confirmed')) {
             Schema::table($users, function (Blueprint $table) {
                 $table->boolean('two_factor_confirmed')
@@ -21,7 +20,8 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::table('users', function (Blueprint $table) {
+        $users = cmsUserTable();
+        Schema::table($users, function (Blueprint $table) {
             $table->dropColumn('two_factor_confirmed');
         });
     }

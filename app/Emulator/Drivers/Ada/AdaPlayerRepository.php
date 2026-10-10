@@ -16,14 +16,11 @@ use Illuminate\Support\Str;
 use RuntimeException;
 
 /**
- * Ada normalises player state across several EF-owned tables. Atom keeps a
- * compatibility users row so its own foreign keys stay valid: CMS writes flow
- * outwards through created()/updated(), and reads are refreshed from Ada by
- * hydrateMany() as models come off the query builder.
- *
- * The mirrored columns are only authoritative for CMS-owned data. Anything Ada
- * writes during gameplay - online state, balances, motto, look - has to be
- * queried through this driver rather than through the users table.
+ * Ada keeps a player on its players row plus one-to-one tables keyed by
+ * player_id. Atom's User model lives on players itself (see AdaDriver's player
+ * schema), so this repository only writes the rows Ada keeps beside it: the
+ * aggregates a new player needs, the ones whose backing attributes changed,
+ * and the role a rank maps to.
  */
 class AdaPlayerRepository implements PlayerRepository
 {
@@ -36,46 +33,9 @@ class AdaPlayerRepository implements PlayerRepository
     /** Player tables Ada declares ON DELETE RESTRICT rather than CASCADE. */
     private const RESTRICTED_TABLES = ['player_tags', 'player_wardrobe_items'];
 
-    /** Ada columns hydrateMany() reads back into the compatibility row. */
-    private const HYDRATED_COLUMNS = [
-        'players.id',
-        'players.username',
-        'players.email',
-        'players.password',
-        'players.created_at',
-        'player_avatar_data.figure_code',
-        'player_avatar_data.motto',
-        'player_avatar_data.gender',
-        'player_data.home_room_id',
-        'player_data.credit_balance',
-        'player_data.pixel_balance',
-        'player_data.gotw_points',
-        'player_data.is_online',
-        'player_data.last_online',
-        'player_website_data.initial_ip',
-        'player_website_data.last_ip',
-        'player_website_data.last_login',
-    ];
-
     public function created(User $user): void
     {
         DB::transaction(function () use ($user): void {
-            if (DB::table('players')->where('id', $user->id)->exists()) {
-                $this->synchronize($user);
-
-                return;
-            }
-
-            $createdAt = now();
-
-            DB::table('players')->insert([
-                'id' => $user->id,
-                'username' => $user->username,
-                'email' => $user->mail,
-                'password' => $user->password,
-                'created_at' => $createdAt,
-            ]);
-
             DB::table('player_avatar_data')->insert([
                 'player_id' => $user->id,
                 'figure_code' => $user->look,
@@ -124,7 +84,7 @@ class AdaPlayerRepository implements PlayerRepository
                 'player_id' => $user->id,
                 'initial_ip' => $user->ip_register,
                 'last_ip' => $user->ip_current,
-                'last_login' => $createdAt,
+                'last_login' => now(),
             ]);
 
             $this->assignRole($user);
@@ -133,16 +93,9 @@ class AdaPlayerRepository implements PlayerRepository
 
     public function updated(User $user): void
     {
-        if (! DB::table('players')->where('id', $user->id)->exists()) {
-            $this->created($user);
-
-            return;
-        }
-
-        // Users are saved for plenty of CMS-only reasons - login timestamps,
-        // website balance, referrals - so only push aggregates that changed.
+        // The players row itself was saved by Eloquent. Users are saved for
+        // plenty of CMS-only reasons, so only write the aggregates that changed.
         $changes = array_filter([
-            'players' => $this->changes($user, ['username' => 'username', 'mail' => 'email', 'password' => 'password']),
             'player_avatar_data' => $this->changes($user, ['look' => 'figure_code', 'motto' => 'motto', 'gender' => 'gender']),
             'player_data' => $this->changes($user, ['home_room' => 'home_room_id']),
             'player_website_data' => $this->changes($user, ['ip_current' => 'last_ip', 'last_login' => 'last_login']),
@@ -156,9 +109,7 @@ class AdaPlayerRepository implements PlayerRepository
 
         DB::transaction(function () use ($user, $changes, $rankChanged): void {
             foreach ($changes as $table => $values) {
-                DB::table($table)
-                    ->where($table === 'players' ? 'id' : 'player_id', $user->id)
-                    ->update($values);
+                DB::table($table)->where('player_id', $user->id)->update($values);
             }
 
             if ($rankChanged) {
@@ -168,57 +119,16 @@ class AdaPlayerRepository implements PlayerRepository
         });
     }
 
-    public function deleted(User $user): void
+    /**
+     * Ada cascades almost every player table from players, but restricts
+     * these two, so deleting an account that ever saved an outfit or a tag
+     * would fail on a foreign key. They are cleared first, in the delete's
+     * transaction; orphaned rows would be junk.
+     */
+    public function deleting(User $user): void
     {
-        DB::transaction(function () use ($user): void {
-            // Ada cascades almost every player table, but restricts these two,
-            // so deleting an account that ever saved an outfit or a tag would
-            // fail on a foreign key. Clear them first; orphaned rows are junk.
-            foreach (self::RESTRICTED_TABLES as $table) {
-                DB::table($table)->where('player_id', $user->id)->delete();
-            }
-
-            DB::table('players')->where('id', $user->id)->delete();
-        });
-    }
-
-    public function hydrateMany(array $users): void
-    {
-        $byId = [];
-
-        foreach ($users as $user) {
-            // A query that did not select the key has nothing to match on.
-            if ($user->getKey() !== null) {
-                $byId[(int) $user->getKey()] = $user;
-            }
-        }
-
-        if ($byId === []) {
-            return;
-        }
-
-        $ids = array_keys($byId);
-
-        $players = DB::table('players')
-            ->leftJoin('player_avatar_data', 'player_avatar_data.player_id', '=', 'players.id')
-            ->leftJoin('player_data', 'player_data.player_id', '=', 'players.id')
-            ->leftJoin('player_website_data', 'player_website_data.player_id', '=', 'players.id')
-            ->whereIn('players.id', $ids)
-            ->get(self::HYDRATED_COLUMNS)
-            ->keyBy('id');
-
-        $roleIds = DB::table('player_role')
-            ->whereIn('player_id', $ids)
-            ->selectRaw('player_id, MAX(role_id) as role_id')
-            ->groupBy('player_id')
-            ->pluck('role_id', 'player_id');
-
-        foreach ($byId as $id => $user) {
-            $player = $players->get($id);
-
-            if ($player !== null) {
-                $this->apply($user, $player, (int) ($roleIds[$id] ?? 1));
-            }
+        foreach (self::RESTRICTED_TABLES as $table) {
+            DB::table($table)->where('player_id', $user->id)->delete();
         }
     }
 
@@ -255,16 +165,15 @@ class AdaPlayerRepository implements PlayerRepository
 
     public function onlineFriends(User $user, int $limit): Collection
     {
-        // Presence and recency both live on player_data; users.last_online is
-        // only the mirror and is not written back, so ordering by it here
-        // would sort on whatever the compatibility import last left behind.
+        // Presence and recency both live on player_data; joining it keeps the
+        // filter and the sort on its own columns rather than on derived values.
         return User::query()
             ->whereKey($this->friendIds($user))
-            ->join('player_data', 'player_data.player_id', '=', 'users.id')
+            ->join('player_data', 'player_data.player_id', '=', 'players.id')
             ->where('player_data.is_online', true)
             ->orderByDesc('player_data.last_online')
             ->limit($limit)
-            ->get([...array_map(fn (string $column): string => 'users.' . $column, PublicUserData::COLUMNS), 'users.last_online']);
+            ->get([...array_map(fn (string $column): string => 'players.' . $column, PublicUserData::COLUMNS), 'players.last_online']);
     }
 
     /** @return LengthAwarePaginator<int, HomeFriend> */
@@ -341,48 +250,11 @@ class AdaPlayerRepository implements PlayerRepository
         return $changes;
     }
 
-    private function apply(User $user, object $player, int $rank): void
-    {
-        $user->setRawAttributes(array_merge($user->getAttributes(), [
-            'username' => data_get($player, 'username'),
-            'mail' => data_get($player, 'email'),
-            'password' => data_get($player, 'password'),
-            'account_created' => $this->unix(data_get($player, 'created_at')),
-            'last_online' => $this->unix(data_get($player, 'last_online')),
-            'last_login' => $this->unix(data_get($player, 'last_login')),
-            'motto' => data_get($player, 'motto') ?? '',
-            'look' => data_get($player, 'figure_code') ?? '',
-            'gender' => data_get($player, 'gender') ?? 'M',
-            'rank' => $rank,
-            'credits' => (int) data_get($player, 'credit_balance'),
-            'pixels' => (int) data_get($player, 'pixel_balance'),
-            'points' => (int) data_get($player, 'gotw_points'),
-            'online' => (bool) data_get($player, 'is_online'),
-            'ip_register' => data_get($player, 'initial_ip') ?? $user->ip_register,
-            'ip_current' => data_get($player, 'last_ip') ?? $user->ip_current,
-            'home_room' => (int) data_get($player, 'home_room_id'),
-        ]), true);
-    }
-
-    private function synchronize(User $user): void
-    {
-        DB::table('players')->where('id', $user->id)->update([
-            'username' => $user->username,
-            'email' => $user->mail,
-            'password' => $user->password,
-        ]);
-    }
-
     private function dateTime(mixed $value): Carbon
     {
         return is_numeric($value) && (int) $value > 0
             ? Carbon::createFromTimestamp((int) $value)
             : now();
-    }
-
-    private function unix(mixed $value): int
-    {
-        return $value === null ? 0 : Carbon::parse($value)->unix();
     }
 
     /**

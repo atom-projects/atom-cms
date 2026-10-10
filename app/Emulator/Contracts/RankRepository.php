@@ -14,6 +14,9 @@ interface RankRepository
 
     public function displayNameColumn(): string;
 
+    /** The User attribute that holds the key of the player's rank model. */
+    public function userKey(): string;
+
     /**
      * The highest rank this emulator currently defines.
      *

@@ -14,7 +14,7 @@ return new class extends Migration
     {
         Schema::create('website_drawbadges', function (Blueprint $table) {
             $table->id();
-            $table->integer('user_id');
+            $table->playerId('user_id');
             $table->string('badge_path');
             $table->string('badge_url');
             $table->string('badge_name');
@@ -22,7 +22,7 @@ return new class extends Migration
             $table->boolean('published')->default(false);
             $table->timestamps();
 
-            $table->foreign('user_id')->references('id')->on('users')->cascadeOnDelete();
+            $table->foreignPlayer('user_id')->cascadeOnDelete();
         });
 
         DB::table('website_settings')->insert([

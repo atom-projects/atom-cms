@@ -10,12 +10,12 @@ return new class extends Migration
     {
         Schema::create('website_staff_applications', function (Blueprint $table) {
             $table->id();
-            $table->integer('user_id');
+            $table->playerId('user_id');
             $table->integer('rank_id');
             $table->text('content');
             $table->timestamps();
 
-            $table->foreign('user_id')->references('id')->on('users')->cascadeOnDelete();
+            $table->foreignPlayer('user_id')->cascadeOnDelete();
             if (config('emulator.driver') !== 'plus') {
                 $table->foreign('rank_id')->references('id')->on('permissions')->cascadeOnDelete();
             }

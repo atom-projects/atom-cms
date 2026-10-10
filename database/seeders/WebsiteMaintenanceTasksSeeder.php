@@ -5,8 +5,8 @@ namespace Database\Seeders;
 use App\Emulator\Contracts\RankRepository;
 use App\Models\Miscellaneous\WebsiteMaintenanceTask;
 use App\Models\User;
-use App\Services\Auth\PasswordHasher;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
 class WebsiteMaintenanceTasksSeeder extends Seeder
@@ -20,7 +20,7 @@ class WebsiteMaintenanceTasksSeeder extends Seeder
             $user = User::query()->forceCreate([
                 'username' => 'Admin',
                 'mail' => 'admin@example.com',
-                'password' => app(PasswordHasher::class)->make(Str::password()),
+                'password' => Hash::make(Str::password()),
                 'account_created' => time(),
                 'last_login' => time(),
                 'motto' => 'Atom',
@@ -28,7 +28,6 @@ class WebsiteMaintenanceTasksSeeder extends Seeder
                 'credits' => 0,
                 'ip_register' => '127.0.0.1',
                 'ip_current' => '127.0.0.1',
-                'auth_ticket' => '',
                 'home_room' => 0,
                 'rank' => $highestRank,
             ]);

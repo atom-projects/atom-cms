@@ -3,8 +3,12 @@
 namespace App\Providers;
 
 use App\Contracts\Rcon;
+use App\Emulator\Emulator;
 use App\Emulator\EmulatorManager;
 use App\Services\AfterCommitRcon;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Database\Schema\ColumnDefinition;
+use Illuminate\Database\Schema\ForeignKeyDefinition;
 use Illuminate\Support\ServiceProvider;
 
 /**
@@ -37,5 +41,29 @@ class EmulatorServiceProvider extends ServiceProvider
         foreach ($manager->active()->migrationPaths() as $path) {
             $this->loadMigrationsFrom($path);
         }
+
+        $this->registerPlayerColumns();
+    }
+
+    /**
+     * Atom's tables reference the active emulator's player row, whose table
+     * and key type differ per emulator (signed INT users.id on Arcturus and
+     * PlusEMU, signed BIGINT players.id on Ada). Laravel's foreignIdFor()
+     * assumes an unsigned BIGINT, so migrations use these instead:
+     *
+     *     $table->playerId('user_id');
+     *     $table->foreignPlayer('user_id')->cascadeOnDelete();
+     */
+    private function registerPlayerColumns(): void
+    {
+        Blueprint::macro('playerId', function (string $column): ColumnDefinition {
+            /** @var Blueprint $this */
+            return Emulator::playerSchema()->keyType === 'bigInteger' ? $this->bigInteger($column) : $this->integer($column);
+        });
+
+        Blueprint::macro('foreignPlayer', function (string $column): ForeignKeyDefinition {
+            /** @var Blueprint $this */
+            return $this->foreign($column)->references('id')->on(Emulator::playerSchema()->table);
+        });
     }
 }

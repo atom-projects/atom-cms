@@ -6,6 +6,8 @@ use App\Emulator\Contracts\BadgeRepository;
 use App\Emulator\Contracts\CurrencyRepository;
 use App\Emulator\Contracts\PlayerRepository;
 use App\Emulator\Contracts\RankRepository;
+use App\Emulator\Emulator;
+use App\Emulator\EmulatorManager;
 use App\Emulator\Models\Rank;
 use App\Enums\CurrencyTypes;
 use App\Models\Articles\WebsiteArticle;
@@ -24,8 +26,6 @@ use App\Models\User\Ban;
 use App\Models\User\ClaimedReferralLog;
 use App\Models\User\Referral;
 use App\Models\User\UserReferral;
-use App\Services\Auth\DriverPasswordCast;
-use App\Services\Auth\PasswordHasher;
 use App\Services\HousekeepingPermissionsService;
 use Database\Factories\UserFactory;
 use Filament\Models\Contracts\FilamentUser;
@@ -43,7 +43,10 @@ use Illuminate\Notifications\DatabaseNotificationCollection;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Unique;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 use Laravel\Sanctum\HasApiTokens;
 use Laravel\Sanctum\PersonalAccessToken;
@@ -177,13 +180,14 @@ class User extends Authenticatable implements FilamentUser, HasName
 
     protected $rememberTokenName = 'website_remember_token';
 
+    /** The player table of the active emulator: users for Arcturus and PlusEMU, players for Ada. */
     public function getTable(): string
     {
-        return config('emulator.driver') === 'plus' ? 'website_users' : parent::getTable();
+        return app()->bound(EmulatorManager::class) ? Emulator::playerSchema()->table : parent::getTable();
     }
 
     /**
-     * Every user query is refreshed from the active emulator in one pass.
+     * Queries speak Atom's attribute names on any emulator's player schema.
      *
      * @param  Builder  $query
      */
@@ -192,18 +196,49 @@ class User extends Authenticatable implements FilamentUser, HasName
         return new UserBuilder($query);
     }
 
+    /**
+     * Rows arrive with the emulator's column names; the model holds Atom's.
+     *
+     * @param  array<string, mixed>|object  $attributes
+     * @param  string|null  $connection
+     */
+    public function newFromBuilder($attributes = [], $connection = null): static
+    {
+        return parent::newFromBuilder(Emulator::playerSchema()->fromNative((array) $attributes), $connection);
+    }
+
+    /**
+     * A player whose attributes span several emulator tables is saved as one
+     * unit: the driver writes the other tables from the model events.
+     *
+     * @param  array<string, mixed>  $options
+     */
+    public function save(array $options = []): bool
+    {
+        return DB::transaction(fn (): bool => parent::save($options));
+    }
+
+    /** Deleting a player clears the emulator rows that restrict it in the same unit. */
+    public function delete(): ?bool
+    {
+        return DB::transaction(fn (): ?bool => parent::delete());
+    }
+
+    /** @return array<int, string> */
+    public function getHidden(): array
+    {
+        return [...parent::getHidden(), ...Emulator::playerSchema()->hidden];
+    }
+
     protected $attributes = [
         'website_balance' => 0,
     ];
 
     protected $fillable = [
         'username',
-        'real_name',
         'password',
         'mail',
-        'mail_verified',
         'account_created',
-        'account_day_of_birth',
         'last_login',
         'last_online',
         'motto',
@@ -236,12 +271,19 @@ class User extends Authenticatable implements FilamentUser, HasName
     protected function casts(): array
     {
         return [
-            'password' => app()->bound('config') && config('emulator.driver') === 'plus' ? DriverPasswordCast::class : 'hashed',
+            'password' => 'hashed',
             'two_factor_confirmed_at' => 'datetime',
             'hidden_staff' => 'boolean',
             'online' => 'boolean',
             'website_balance' => 'integer',
+            ...(app()->bound(EmulatorManager::class) ? Emulator::playerSchema()->casts() : []),
         ];
+    }
+
+    /** A unique rule for an attribute, checked against the column the emulator stores it in. */
+    public static function uniqueRule(string $attribute): Unique
+    {
+        return Rule::unique(static::class, Emulator::playerSchema()->column($attribute));
     }
 
     /** @return HasMany<Session, $this> */
@@ -260,14 +302,9 @@ class User extends Authenticatable implements FilamentUser, HasName
     /** @return HasOne<Rank, $this> */
     public function permission(): HasOne
     {
-        $foreignKey = 'id';
-        $localKey = config('emulator.driver') === 'plus' ? 'native_role_id' : 'rank';
+        $ranks = app(RankRepository::class);
 
-        return $this->hasOne(
-            app(RankRepository::class)->model(),
-            $foreignKey,
-            $localKey,
-        );
+        return $this->hasOne($ranks->model(), 'id', $ranks->userKey());
     }
 
     /** @return HasMany<WebsiteArticle, $this> */
@@ -399,7 +436,7 @@ class User extends Authenticatable implements FilamentUser, HasName
 
     public function changePassword(string $newPassword): void
     {
-        $this->password = app(PasswordHasher::class)->make($newPassword);
+        $this->password = $newPassword;
         $this->setRememberToken(Str::random(60));
         $this->save();
     }

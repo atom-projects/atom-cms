@@ -3,15 +3,13 @@
 namespace App\Actions\Fortify;
 
 use App\Actions\Fortify\Rules\PasswordValidationRules;
-use App\Services\Auth\PasswordHasher;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Laravel\Fortify\Contracts\UpdatesUserPasswords;
 
 class UpdateUserPassword implements UpdatesUserPasswords
 {
     use PasswordValidationRules;
-
-    public function __construct(private readonly PasswordHasher $hasher) {}
 
     /**
      * Validate and update the user's password.
@@ -29,7 +27,7 @@ class UpdateUserPassword implements UpdatesUserPasswords
         ])->validateWithBag('updatePassword');
 
         $user->forceFill([
-            'password' => $this->hasher->make($input['password']),
+            'password' => Hash::make($input['password']),
         ])->save();
     }
 }

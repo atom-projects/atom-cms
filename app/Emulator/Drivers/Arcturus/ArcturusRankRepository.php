@@ -20,6 +20,11 @@ class ArcturusRankRepository implements RankRepository
         return 'rank_name';
     }
 
+    public function userKey(): string
+    {
+        return 'rank';
+    }
+
     public function highestRank(): int
     {
         return (int) Permission::query()->max('id');

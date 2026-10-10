@@ -14,7 +14,6 @@ use App\Filament\Resources\User\Users\Pages\ViewUser;
 use App\Filament\Tables\Columns\UserAvatarColumn;
 use App\Models\Community\Teams\WebsiteTeam;
 use App\Models\User;
-use App\Services\Auth\PasswordHasher;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Facades\Filament;
@@ -31,6 +30,7 @@ use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
 
 class UserResource extends Resource
@@ -168,7 +168,7 @@ class UserResource extends Resource
                                     ->schema([
                                         TextInput::make('password')
                                             ->label(__('filament::resources.inputs.new_password'))
-                                            ->dehydrateStateUsing(fn ($state) => app(PasswordHasher::class)->make($state))
+                                            ->dehydrateStateUsing(fn ($state) => Hash::make($state))
                                             ->dehydrated(fn ($state) => filled($state))
                                             ->password()
                                             ->required(fn (string $operation): bool => $operation === 'create')

@@ -197,14 +197,10 @@ test('ada resolves online friendships in both directions', function () {
         ->toBe(collect([$outgoing->id, $incoming->id, $offline->id])->sort()->values()->all());
 });
 
-test('ada reads presence from its own tables, not the mirrored users column', function () {
+test('ada reads presence from player_data', function () {
     $online = User::factory()->create();
     $offline = User::factory()->create();
 
-    // The users column is a compatibility mirror Ada never writes to. Set it
-    // to the opposite of the truth to prove nothing reads it.
-    DB::table('users')->where('id', $online->id)->update(['online' => '0']);
-    DB::table('users')->where('id', $offline->id)->update(['online' => '1']);
     DB::table('player_data')->where('player_id', $online->id)->update(['is_online' => true]);
 
     $api = app(UserApiService::class);
@@ -216,7 +212,7 @@ test('ada reads presence from its own tables, not the mirrored users column', fu
 });
 
 test('ada refreshes users even when a query selects a column subset', function () {
-    $user = User::factory()->create(['motto' => 'mirror motto', 'look' => 'mirror-look']);
+    $user = User::factory()->create(['motto' => 'old motto', 'look' => 'old-look']);
 
     DB::table('player_data')->where('player_id', $user->id)->update(['is_online' => true]);
     DB::table('player_avatar_data')->where('player_id', $user->id)->update([
@@ -224,16 +220,15 @@ test('ada refreshes users even when a query selects a column subset', function (
         'figure_code' => 'live-look',
     ]);
 
-    // The public API selects username/motto/look and no key. Without the key
-    // there is nothing to match against Ada, and the stale mirror would be
-    // served instead.
+    // The public API selects username/motto/look and no key; those still
+    // resolve to Ada's aggregate tables.
     $api = app(UserApiService::class);
 
     expect($api->fetchUser($user->username)?->motto)->toBe('live motto')
         ->and($api->onlineUsers()->first()?->look)->toBe('live-look');
 });
 
-test('ada refreshes a whole result set in a fixed number of queries', function () {
+test('ada reads a whole result set in one query', function () {
     User::factory()->count(15)->create();
 
     DB::flushQueryLog();
@@ -244,10 +239,10 @@ test('ada refreshes a whole result set in a fixed number of queries', function (
 
     DB::disableQueryLog();
 
-    // One query for the users, one for the Ada aggregates, one for the roles.
-    // Anything that scales with the result count is an N+1 regression.
+    // Ada's aggregates and roles are selected with the players. Anything that
+    // scales with the result count is an N+1 regression.
     expect($users)->toHaveCount(15)
-        ->and($queries)->toBe(3);
+        ->and($queries)->toBe(1);
 });
 
 test('ada only writes the aggregates whose columns actually changed', function () {
@@ -268,7 +263,7 @@ test('ada only writes the aggregates whose columns actually changed', function (
     DB::disableQueryLog();
 
     expect($writes)->toHaveCount(1)
-        ->and($writes->first()['query'])->toContain('`users`')
+        ->and($writes->first()['query'])->toContain('`players`')
         ->and(DB::table('player_avatar_data')->where('player_id', $user->id)->value('motto'))->toBe('Set in game')
         ->and(DB::table('player_website_data')->where('player_id', $user->id)->value('last_ip'))->toBe('203.0.113.9');
 });

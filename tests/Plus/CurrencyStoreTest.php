@@ -1,7 +1,6 @@
 <?php
 
 use App\Emulator\Contracts\CurrencyRepository;
-use App\Emulator\Drivers\Plus\PlusPlayerProjection;
 use App\Enums\CurrencyTypes;
 use App\Models\User;
 use App\Services\Community\CommunityReadService;
@@ -121,35 +120,36 @@ test('currency leaderboards rank by user_currencies and include players without 
         ->and(app(CommunityReadService::class)->leaderboards()['diamonds']->first()->value)->toBe(900);
 });
 
-test('player hydration and the projection read duckets and gotw points from user_currencies', function () {
-    $user = User::factory()->create();
+test('players read duckets and gotw points from user_currencies, one query per collection', function () {
+    $users = User::factory()->count(3)->create();
     DB::table('user_currencies')->insert([
-        ['user_id' => $user->id, 'type' => 0, 'amount' => 321],
-        ['user_id' => $user->id, 'type' => 103, 'amount' => 12],
+        ['user_id' => $users[0]->id, 'type' => 0, 'amount' => 321],
+        ['user_id' => $users[0]->id, 'type' => 103, 'amount' => 12],
     ]);
 
-    $fresh = User::query()->findOrFail($user->id);
-    app(PlusPlayerProjection::class)->synchronize();
-    $projected = DB::table('website_users')->where('id', $user->id)->first();
+    DB::enableQueryLog();
+    $loaded = User::query()->whereKey($users->modelKeys())->orderByDesc('pixels')->get();
+    DB::disableQueryLog();
 
-    expect((int) $fresh->pixels)->toBe(321)
-        ->and((int) $fresh->points)->toBe(12)
-        ->and((int) $projected->pixels)->toBe(321)
-        ->and((int) $projected->points)->toBe(12);
+    expect(DB::getQueryLog())->toHaveCount(1)
+        ->and($loaded->first()->id)->toBe($users[0]->id)
+        ->and($loaded->first()->pixels)->toBe(321)
+        ->and($loaded->first()->points)->toBe(12)
+        ->and($loaded->last()->pixels)->toBe(0);
 });
 
-test('native users imported after installation bring their user_currencies balances', function () {
+test('players registered by the emulator are users straight away', function () {
     $id = DB::table('users')->insertGetId(['username' => 'NativeRich', 'password' => null, 'mail' => 'native-rich@example.test']);
     DB::table('user_currencies')->insert([
         ['user_id' => $id, 'type' => 0, 'amount' => 55],
         ['user_id' => $id, 'type' => 103, 'amount' => 6],
     ]);
 
-    app(PlusPlayerProjection::class)->import('NativeRich');
-    $projected = DB::table('website_users')->where('id', $id)->first();
+    $native = User::query()->where('username', 'NativeRich')->firstOrFail();
 
-    expect((int) $projected->pixels)->toBe(55)
-        ->and((int) $projected->points)->toBe(6);
+    expect($native->pixels)->toBe(55)
+        ->and($native->points)->toBe(6)
+        ->and($native->rank)->toBe(1);
 });
 
 test('deleting a player removes their currency rows', function () {

@@ -2,141 +2,70 @@
 
 namespace App\Emulator\Drivers\Plus;
 
-use App\Emulator\Contracts\AllocatesPlayerIdentity;
+use App\Emulator\Contracts\CurrencyRepository;
 use App\Emulator\Contracts\PlayerRepository;
-use App\Emulator\Contracts\PreparesPlayerQueries;
 use App\Emulator\Data\HomeFriend;
+use App\Enums\CurrencyTypes;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use RuntimeException;
 
-final class PlusPlayerRepository implements AllocatesPlayerIdentity, PlayerRepository, PreparesPlayerQueries
+/**
+ * Atom's User model lives on PlusEMU's users row (see PlusDriver::playerSchema).
+ * Attributes PlusEMU normalises into other tables are written here, from the
+ * model events of the same save.
+ */
+final class PlusPlayerRepository implements PlayerRepository
 {
-    public function prepareQuery(Builder $query): void
-    {
-        app(PlusPlayerProjection::class)->synchronize();
-        $query->whereIn($query->getModel()->getQualifiedKeyName(), DB::table('users')->select('id'));
-    }
+    /** Atom currency attributes PlusEMU keeps in user_currencies. */
+    private const CURRENCY_ATTRIBUTES = ['pixels' => CurrencyTypes::Duckets, 'points' => CurrencyTypes::Points];
 
-    public function allocateIdentity(): array
-    {
-        return ['id' => max(
-            (int) DB::table('users')->max('id'),
-            (int) DB::table('website_users')->max('id'),
-        ) + 1];
-    }
+    public function __construct(private readonly CurrencyRepository $currencies) {}
 
     public function created(User $user): void
     {
-        DB::transaction(function () use ($user): void {
-            DB::table('users')->insert([
-                'id' => $user->id, 'username' => $user->username, 'password' => $user->password,
-                'mail' => $user->mail, 'auth_ticket' => '', 'rank' => $this->securityLevel((int) $user->rank),
-                'credits' => (int) $user->credits,
-                'look' => $user->look, 'gender' => $user->gender ?: 'M', 'motto' => $user->motto,
-                'account_created' => now(), 'last_online' => now(), 'online' => false,
-                'ip_last' => $user->ip_current, 'ip_reg' => $user->ip_register,
-            ]);
-            DB::table('user_roles')->insertOrIgnore(['user_id' => $user->id, 'role_id' => $this->roleId((int) $user->rank), 'created_at' => now()]);
-        });
+        $level = $this->securityLevel((int) $user->rank);
+        DB::table('user_roles')->insertOrIgnore(['user_id' => $user->id, 'role_id' => $this->roleId($level), 'created_at' => now()]);
+        DB::table('users')->where('id', $user->id)->update(['rank' => $level]);
+
+        foreach (self::CURRENCY_ATTRIBUTES as $attribute => $currency) {
+            $this->currencies->give($user, $currency, (int) $user->getAttribute($attribute));
+        }
     }
 
     public function updated(User $user): void
     {
-        $values = [];
-        foreach (['username' => 'username', 'password' => 'password', 'mail' => 'mail', 'look' => 'look', 'motto' => 'motto', 'gender' => 'gender', 'ip_current' => 'ip_last'] as $attribute => $column) {
-            if ($user->wasChanged($attribute)) {
-                $values[$column] = $user->getAttribute($attribute);
-            }
-        }
         if ($user->wasChanged('password')) {
-            $values += [
-                'auth_ticket' => null,
-                'auth_ticket_expires_at' => null,
-                'auth_ticket_exchanged' => false,
-                'auth_ticket_session' => null,
-            ];
-        }
-        if ($values !== [] && ! $user->wasChanged('password')) {
-            DB::table('users')->where('id', $user->id)->update($values);
-        }
-        if ($user->wasChanged('password')) {
-            DB::transaction(function () use ($user, $values): void {
-                DB::table('users')->where('id', $user->id)->lockForUpdate()->firstOrFail();
-                DB::table('users')->where('id', $user->id)->update($values + [
-                    'credential_generation' => DB::raw('credential_generation + 1'),
-                ]);
-                foreach (['user_access_tokens', 'user_remember_tokens', 'user_sessions'] as $table) {
-                    if (Schema::hasTable($table)) {
-                        DB::table($table)->where('user_id', $user->id)->whereNull('revoked_at')->update(['revoked_at' => now('UTC')]);
-                    }
-                }
-            });
+            $this->revokeCredentials($user);
         }
         if ($user->wasChanged('rank')) {
-            DB::transaction(function () use ($user): void {
-                DB::table('user_roles')->where('user_id', $user->id)
-                    ->whereIn('role_id', DB::table('roles')->select('id')->where('security_level', '>', 1))
-                    ->delete();
-                DB::table('user_roles')->insertOrIgnore(['user_id' => $user->id, 'role_id' => $this->roleId((int) $user->rank), 'created_at' => now()]);
-                DB::table('users')->where('id', $user->id)->update(['rank' => $this->securityLevel((int) $user->rank)]);
-            });
+            DB::table('user_roles')->where('user_id', $user->id)
+                ->whereIn('role_id', DB::table('roles')->select('id')->where('security_level', '>', 1))
+                ->delete();
+            DB::table('user_roles')->insertOrIgnore(['user_id' => $user->id, 'role_id' => $this->roleId((int) $user->rank), 'created_at' => now()]);
+            DB::table('users')->where('id', $user->id)->update(['rank' => $this->securityLevel((int) $user->rank)]);
         }
         if ($user->wasChanged('home_room')) {
             DB::table('users_settings')->where('user_id', $user->id)->update(['home_room' => (int) $user->home_room]);
         }
-    }
-
-    public function deleted(User $user): void
-    {
-        DB::table('users')->where('id', $user->id)->delete();
-    }
-
-    public function hydrateMany(array $users): void
-    {
-        $byId = collect($users)->filter(fn (User $user) => $user->getKey() !== null)->keyBy(fn (User $user) => (int) $user->id);
-        if ($byId->isEmpty()) {
-            return;
-        }
-        $native = DB::table('users')->leftJoin('users_settings', 'users_settings.user_id', '=', 'users.id')
-            ->whereIn('users.id', $byId->keys())->get([
-                'users.id', 'users.username', 'users.password', 'users.mail', 'users.credits', 'users.look', 'users.gender',
-                'users.motto', 'users.account_created', 'users.last_online', 'users.online', 'users.ip_last', 'users.ip_reg',
-                'users_settings.home_room',
-            ])->keyBy('id');
-        $currencies = DB::table('user_currencies')->whereIn('user_id', $byId->keys())
-            ->whereIn('type', [PlusCurrencyRepository::DUCKETS, PlusCurrencyRepository::GOTW_POINTS])->get(['user_id', 'type', 'amount'])
-            ->mapWithKeys(fn (object $row): array => [$row->user_id . ':' . $row->type => (int) $row->amount]);
-        $roles = DB::table('user_roles')->join('roles', 'roles.id', '=', 'user_roles.role_id')->whereIn('user_id', $byId->keys())
-            ->where(fn (QueryBuilder $query) => $query->whereNull('expires_at')->orWhere('expires_at', '>', $this->utcNow()))
-            ->orderByDesc('roles.security_level')->orderByDesc('roles.weight')->orderBy('roles.id')
-            ->get(['user_id', 'role_id', 'roles.security_level'])->unique('user_id')->keyBy('user_id');
-        foreach ($byId as $id => $user) {
-            if (($row = $native->get($id)) === null) {
-                continue;
+        foreach (self::CURRENCY_ATTRIBUTES as $attribute => $currency) {
+            if ($user->wasChanged($attribute)) {
+                $this->currencies->give($user, $currency, (int) $user->getAttribute($attribute) - (int) $user->getOriginal($attribute));
             }
-            $user->setRawAttributes(array_merge($user->getAttributes(), [
-                'username' => $row->username, 'password' => $row->password, 'mail' => $row->mail,
-                'credits' => (int) $row->credits, 'pixels' => $currencies[$id . ':' . PlusCurrencyRepository::DUCKETS] ?? 0,
-                'points' => $currencies[$id . ':' . PlusCurrencyRepository::GOTW_POINTS] ?? 0, 'look' => $row->look ?? '', 'gender' => $row->gender ?? 'M',
-                'motto' => $row->motto ?? '', 'account_created' => $this->unix($row->account_created),
-                'last_online' => $this->unix($row->last_online), 'online' => (bool) $row->online,
-                'ip_current' => $row->ip_last ?? '', 'ip_register' => $row->ip_reg ?? '',
-                'home_room' => (int) ($row->home_room ?? 0), 'rank' => (int) ($roles[$id]->security_level ?? 1),
-                'native_role_id' => $roles[$id]->role_id ?? null,
-            ]), true);
         }
     }
+
+    /** The users row is the player; PlusEMU's foreign keys clear or protect the rest. */
+    public function deleting(User $user): void {}
 
     public function whereOnline(Builder $query): Builder
     {
-        return $query->whereIn($query->getModel()->getQualifiedKeyName(), DB::table('users')->select('id')->where('online', true));
+        return $query->where($query->getModel()->qualifyColumn('online'), true);
     }
 
     public function issueSso(User $user): string
@@ -166,6 +95,25 @@ final class PlusPlayerRepository implements AllocatesPlayerIdentity, PlayerRepos
         return $page->through(fn (User $friend) => new HomeFriend($friend));
     }
 
+    /**
+     * A new password ends every session PlusEMU issued under the old one.
+     */
+    private function revokeCredentials(User $user): void
+    {
+        DB::table('users')->where('id', $user->id)->update([
+            'credential_generation' => DB::raw('credential_generation + 1'),
+            'auth_ticket' => null,
+            'auth_ticket_expires_at' => null,
+            'auth_ticket_exchanged' => false,
+            'auth_ticket_session' => null,
+        ]);
+        foreach (['user_access_tokens', 'user_remember_tokens', 'user_sessions'] as $table) {
+            if (Schema::hasTable($table)) {
+                DB::table($table)->where('user_id', $user->id)->whereNull('revoked_at')->update(['revoked_at' => now('UTC')]);
+            }
+        }
+    }
+
     /** @return Collection<int, int> */
     private function friendIds(User $user): Collection
     {
@@ -188,15 +136,5 @@ final class PlusPlayerRepository implements AllocatesPlayerIdentity, PlayerRepos
             ->when($securityLevel > 1, fn (QueryBuilder $query) => $query->orderByDesc('weight'))
             ->orderBy('id')
             ->value('id') ?? throw new RuntimeException("PlusEMU has no role for security level {$securityLevel}."));
-    }
-
-    private function unix(mixed $value): int
-    {
-        return $value === null ? 0 : Carbon::parse($value)->unix();
-    }
-
-    private function utcNow(): string
-    {
-        return now('UTC')->format('Y-m-d H:i:s.u');
     }
 }

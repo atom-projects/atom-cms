@@ -4,6 +4,7 @@ use App\Models\User;
 use App\Services\HousekeepingPermissionsService;
 use App\Services\PermissionsService;
 use App\Services\SettingsService;
+use Illuminate\Support\Facades\Schema;
 
 if (! function_exists('setting')) {
     /**
@@ -78,5 +79,17 @@ if (! function_exists('dropForeignKeyIfExists')) {
                 );
             }
         }
+    }
+}
+
+if (! function_exists('cmsUserTable')) {
+    /**
+     * The table Atom's own user columns lived on when a migration ran. PlusEMU
+     * installs kept them on website_users until 2026_10_09 moved them onto the
+     * emulator's users row.
+     */
+    function cmsUserTable(): string
+    {
+        return Schema::hasTable('website_users') ? 'website_users' : (new User)->getTable();
     }
 }

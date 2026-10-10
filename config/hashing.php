@@ -15,7 +15,8 @@ return [
     |
     */
 
-    'driver' => env('EMULATOR_DRIVER') === 'plus' ? 'argon2id' : 'bcrypt',
+    // Replaced at boot by the active emulator driver's passwordHashing().
+    'driver' => 'bcrypt',
 
     /*
     |--------------------------------------------------------------------------

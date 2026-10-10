@@ -1,6 +1,5 @@
 <?php
 
-use App\Models\User;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -13,7 +12,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        $users = (new User)->getTable();
+        $users = cmsUserTable();
         if (! Schema::hasColumn($users, 'website_remember_token')) {
             Schema::table($users, function (Blueprint $table): void {
                 $table->string('website_remember_token', 100)->nullable();
@@ -35,7 +34,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('users', function (Blueprint $table): void {
+        $users = cmsUserTable();
+        Schema::table($users, function (Blueprint $table): void {
             $table->dropColumn('website_remember_token');
         });
     }

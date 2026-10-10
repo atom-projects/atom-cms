@@ -3,34 +3,34 @@
 namespace App\Services\Auth;
 
 use App\Models\User;
-use RuntimeException;
+use Illuminate\Support\Facades\Hash;
 
 final class PasswordVerifier
 {
-    public function __construct(private readonly PasswordHasher $hasher) {}
-
+    /**
+     * Check a password against the player's stored one and keep it current: a
+     * hash of another algorithm or cost, as a hotel that changed emulators
+     * has, is replaced after a successful check, and so is a plaintext
+     * password, which PlusEMU once stored.
+     */
     public function verify(User $user, string $password): bool
     {
-        $hash = $user->getAttribute('password');
+        $stored = $user->getAttribute('password');
 
-        if (! is_string($hash) || $hash === '') {
+        if (! is_string($stored) || $stored === '') {
             return false;
         }
 
-        try {
-            if ($this->hasher->check($password, $hash)) {
-                return true;
-            }
-        } catch (RuntimeException) {
-            // PlusEMU historically stored plaintext passwords. They are
-            // accepted once and immediately replaced with Argon2id below.
-        }
+        $hashed = password_get_info($stored)['algo'] !== null;
 
-        if (config('emulator.driver') !== 'plus' || str_starts_with($hash, '$argon2id$') || ! hash_equals($hash, $password)) {
+        if (! ($hashed ? password_verify($password, $stored) : hash_equals($stored, $password))) {
             return false;
         }
 
-        $user->forceFill(['password' => $this->hasher->make($password)])->save();
+        if (! $hashed || Hash::needsRehash($stored)) {
+            // The password cast hashes it with the active emulator's driver.
+            $user->forceFill(['password' => $password])->save();
+        }
 
         return true;
     }

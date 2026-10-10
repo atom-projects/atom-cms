@@ -132,6 +132,7 @@ jobs:
       DB_PORT: 3306
       DB_DATABASE: testing
       DB_ADA_DATABASE: testing_ada
+      DB_PLUS_DATABASE: testing_plus
       DB_USERNAME: root
       DB_PASSWORD: password
     steps:
@@ -166,12 +167,12 @@ jobs:
         env:
           COMPOSER_AUTH: '{"github-oauth":{"github.com":"${{ github.token }}"}}'
 
-      # Ada and Arcturus own overlapping table names, so each suite runs
-      # against a database of its own. See tests/AdaTestCase.php.
-      - name: Create the Ada test database
+      # The emulators own overlapping table names, so each suite runs against
+      # a database of its own. See tests/AdaTestCase.php and PlusTestCase.php.
+      - name: Create the Ada and PlusEMU test databases
         # Created through PDO because the runner has no MariaDB client, and
         # pdo_mysql is already installed for the suite itself.
-        run: php -r '$pdo = new PDO("mysql:host=127.0.0.1;port=3306", "root", "password"); $pdo->exec("CREATE DATABASE IF NOT EXISTS testing_ada");' 
+        run: php -r '$pdo = new PDO("mysql:host=127.0.0.1;port=3306", "root", "password"); $pdo->exec("CREATE DATABASE IF NOT EXISTS testing_ada"); $pdo->exec("CREATE DATABASE IF NOT EXISTS testing_plus");'
 
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:

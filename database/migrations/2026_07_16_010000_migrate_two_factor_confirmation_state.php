@@ -1,6 +1,5 @@
 <?php
 
-use App\Models\User;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -10,7 +9,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        $users = (new User)->getTable();
+        $users = cmsUserTable();
         if (! Schema::hasColumn($users, 'two_factor_confirmed_at')) {
             Schema::table($users, function (Blueprint $table): void {
                 $table->timestamp('two_factor_confirmed_at')->nullable()->after('two_factor_recovery_codes');
@@ -34,7 +33,7 @@ return new class extends Migration
 
     public function down(): void
     {
-        $users = (new User)->getTable();
+        $users = cmsUserTable();
         if (! Schema::hasColumn($users, 'two_factor_confirmed')) {
             Schema::table($users, function (Blueprint $table): void {
                 $table->boolean('two_factor_confirmed')->default(false)->after('two_factor_recovery_codes');
