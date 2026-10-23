@@ -13,25 +13,25 @@
         "api:test": "node --test scripts/api/contract.test.mjs"
     },
     "devDependencies": {
-        "@prettier/plugin-php": "^0.19.3",
+        "@prettier/plugin-php": "^0.26.0",
         "@shufo/prettier-plugin-blade": "^1.8.6",
         "@tailwindcss/forms": "^0.5.10",
         "@tailwindcss/postcss": "^4.0.0",
         "@tailwindcss/typography": "^0.5.19",
         "ajv": "8.20.0",
         "ajv-formats": "3.0.1",
-        "autoprefixer": "^10.4.20",
+        "autoprefixer": "^10.6.1",
         "axios": "^1.6.2",
-        "laravel-vite-plugin": "^1.3.0",
-        "openapi-typescript": "7.10.1",
-        "postcss": "^8.4.49",
+        "laravel-vite-plugin": "^3.2.0",
+        "openapi-typescript": "7.13.0",
+        "postcss": "^8.5.31",
         "tailwindcss": "^4.0.0",
         "turbolinks": "^5.2.0",
-        "vite": "^6.4.3"
+        "vite": "^8.3.4"
     },
     "dependencies": {
         "flowbite": "^4.0.2",
-        "swiper": "^12.2.0"
+        "swiper": "^14.3.0"
     },
     "overrides": {
         "postcss-selector-parser": "^7.1.6"
