@@ -10,6 +10,7 @@ use App\Http\Resources\Api\V1\PublicUserResource;
 use App\Models\Miscellaneous\WebsiteLanguage;
 use App\Models\Miscellaneous\WebsiteMaintenanceTask;
 use App\Models\User;
+use App\Services\Avatar\AvatarImager;
 use App\Services\Community\CameraService;
 use App\Services\HousekeepingPermissionsService;
 use App\Services\InstallationService;
@@ -35,7 +36,7 @@ class BootstrapController extends Controller
             'mode' => config('atom.mode', 'full'),
             'maintenance_message' => $maintenance ? Purify::clean((string) setting('maintenance_message', '')) : null,
             'tasks' => [
-                'items' => $tasks?->getCollection()->map(fn (WebsiteMaintenanceTask $task): array => ['id' => $task->id, 'task' => $task->task, 'completed' => (bool) $task->completed, 'user' => $task->user ? ['username' => $task->user->username, 'look' => $task->user->look] : null]) ?? [],
+                'items' => $tasks?->getCollection()->map(fn (WebsiteMaintenanceTask $task): array => ['id' => $task->id, 'task' => $task->task, 'completed' => (bool) $task->completed, 'user' => $task->user ? ['username' => $task->user->username, 'look' => $task->user->look, 'avatar' => app(AvatarImager::class)->apiPrefix($task->user->look)] : null]) ?? [],
                 'current_page' => $tasks?->currentPage() ?? 1,
                 'has_more' => $tasks?->hasMorePages() ?? false,
             ],

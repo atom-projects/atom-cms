@@ -66,6 +66,17 @@ final readonly class AvatarImager
         return sprintf('%s/v%d/%s/%s', rtrim($this->baseUrl, '/'), $this->version, $figure, $signature);
     }
 
+    /**
+     * The prefix for API clients, which may run on another origin, so a
+     * relative prefix becomes an absolute address.
+     */
+    public function apiPrefix(?string $figure): ?string
+    {
+        $prefix = $this->prefix($figure);
+
+        return $prefix !== null && str_starts_with($prefix, '/') ? url($prefix) : $prefix;
+    }
+
     public function usesOfficialSizes(): bool
     {
         return $this->isSelfHosted() || str_contains($this->officialUrl, 'www.habbo.com');
