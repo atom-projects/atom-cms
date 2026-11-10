@@ -58,7 +58,7 @@
                                     <span class="flex items-center justify-center rounded-lg border p-0 {{ $theme === 'dusk' ? 'border-gray-600 bg-[#2c3140]' : 'border-gray-300 bg-white dark:border-gray-600 dark:bg-gray-800' }}">
                                         <img style="image-rendering: pixelated;"
                                              class="transition duration-300 ease-in-out hover:scale-105"
-                                             src="{{ setting('avatar_imager') }}{{ $comment->user->look }}&headonly=1&direction=2&head_direction=3&gesture=sml"
+                                             src="{{ avatar_url($comment->user, ['headonly' => true, 'direction' => 2, 'head_direction' => 3, 'gesture' => 'sml']) }}"
                                              alt="{{ $comment->user->username }}">
                                     </span>
                                 </a>

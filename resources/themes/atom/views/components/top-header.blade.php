@@ -49,10 +49,10 @@
         <x-navigation.dropdown classes="!border-none">
             <div @class([
                     '!bg-no-repeat !bg-center',
-                    'w-[54px] h-[62px]' => Str::contains(setting('avatar_imager'), 'www.habbo.com'),
-                    'w-[64px] h-[110px]' => !Str::contains(setting('avatar_imager'), 'www.habbo.com'),
+                    'w-[54px] h-[62px]' => app(\App\Services\Avatar\AvatarImager::class)->usesOfficialSizes(),
+                    'w-[64px] h-[110px]' => !app(\App\Services\Avatar\AvatarImager::class)->usesOfficialSizes(),
                 ])
-                style="background: url({{ setting('avatar_imager') }}{{ auth()->user()->look }}&direction=2&headonly=1&head_direction=2&gesture=sml)">
+                style="background: url({{ avatar_url(auth()->user(), ['direction' => 2, 'headonly' => true, 'head_direction' => 2, 'gesture' => 'sml']) }})">
             </div>
 
             <span class="-ml-2">{{ auth()->user()->username }}</span>

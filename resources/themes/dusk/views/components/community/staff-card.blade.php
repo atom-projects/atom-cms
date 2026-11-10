@@ -11,7 +11,7 @@
                 <a href="{{ route('home.show', $user) }}"
                    class="absolute -bottom-10 drop-shadow transition duration-300 ease-in-out hover:scale-105">
                     <img style="image-rendering: pixelated;"
-                         src="{{ setting('avatar_imager') }}{{ $user->look }}&direction=2&head_direction=3&gesture=sml&action=wav&size=l"
+                         src="{{ avatar_url($user, ['direction' => 2, 'head_direction' => 3, 'gesture' => 'sml', 'action' => 'wav', 'size' => 'l']) }}"
                          alt="">
                 </a>
             </div>

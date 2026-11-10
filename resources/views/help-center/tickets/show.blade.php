@@ -119,7 +119,7 @@
                             <div class="flex">
                                 <small class="ml-14 text-gray-400">{{ $reply->user->username }}</small>
                                 <div class="absolute left-2 -bottom-10 flex gap-x-2">
-                                    <img src="{{ setting('avatar_imager') }}/{{ $reply->user->look }}" alt="">
+                                    <img src="{{ avatar_url($reply->user) }}" alt="">
                                 </div>
                             </div>
 
@@ -169,7 +169,7 @@
                             <div class="flex">
                                 <small class="mr-14 text-gray-400">{{ $reply->user->username }}</small>
                                 <div class="absolute right-2 -bottom-10 flex gap-x-2">
-                                    <img class="scale-x-[-1]" src="{{ setting('avatar_imager') }}/{{ $reply->user->look }}" alt="">
+                                    <img class="scale-x-[-1]" src="{{ avatar_url($reply->user) }}" alt="">
                                 </div>
                             </div>
                         </div>

@@ -23,7 +23,7 @@
             <img
                 class="w-8 h-14 object-cover shrink-0"
                 style="image-rendering: pixelated; object-position: -9px -7px;"
-                src="{{ setting('avatar_imager') }}{{ $message->user->look }}&direction=4&head_direction=4&action=sml&size=s"
+                src="{{ avatar_url($message->user, ['direction' => 4, 'head_direction' => 4, 'gesture' => 'sml', 'size' => 's']) }}"
                 alt="{{ $message->user->username }}"
             >
 

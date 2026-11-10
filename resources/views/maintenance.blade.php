@@ -31,7 +31,7 @@
                             <img
                                 class="drop-shadow-thin -mb-8 transition duration-300 ease-in-out"
                                 style="image-rendering: auto"
-                                src="{{ setting('avatar_imager') }}{{ $task->user->look }}&direction=3&head_direction=3&gesture=sml&action=wav&frame=0"
+                                src="{{ avatar_url($task->user, ['direction' => 3, 'head_direction' => 3, 'gesture' => 'sml', 'action' => 'wav']) }}"
                                 alt=""/>
                         </div>
 
