@@ -43,6 +43,13 @@ return [
         'read_timeout_seconds' => (float) env('RCON_READ_TIMEOUT', 2),
     ],
 
+    // A hotel that draws its own avatar images shares this secret with the
+    // imager. Without it the CMS uses the `avatar_imager` website setting.
+    'avatar_imager' => [
+        'secret' => env('AVATAR_IMAGER_SECRET'),
+        'url' => env('AVATAR_IMAGER_URL', '/avatars'),
+    ],
+
     'client' => [
         'nitro_path' => env('NITRO_CLIENT_PATH', '/client/html5/nitro-client'), // Path where the index.html is
         'flash_enabled' => env('FLASH_CLIENT_ENABLED', false),

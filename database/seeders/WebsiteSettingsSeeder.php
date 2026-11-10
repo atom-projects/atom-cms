@@ -61,6 +61,11 @@ class WebsiteSettingsSeeder extends Seeder
                 'comment' => 'The base url for the imager used to render avatars on the CMS',
             ],
             [
+                'key' => 'avatar_imager_version',
+                'value' => '1',
+                'comment' => 'Raise this number after the art of existing clothing changes, so a hotel that draws its own avatar images draws them again',
+            ],
+            [
                 'key' => 'start_look',
                 'value' => 'fa-201407-1324.hr-828-1035.ch-3001-1261-1408.sh-3068-92-1408.cp-9032-1308.lg-270-1281.hd-209-3',
                 'comment' => 'Sets the starting outfit for any new user registering',
