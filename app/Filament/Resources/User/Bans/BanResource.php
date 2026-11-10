@@ -83,7 +83,7 @@ class BanResource extends Resource
                     ->toggleable()
                     ->pointer('user.look')
                     ->label(__('filament::resources.columns.avatar'))
-                    ->options('&size=m&head_direction=3&gesture=sml&headonly=1'),
+                    ->options(['size' => 'm', 'head_direction' => 3, 'gesture' => 'sml', 'headonly' => true]),
 
                 TextColumn::make('user.username')
                     ->label(__('filament::resources.columns.username'))

@@ -281,7 +281,7 @@ class UserResource extends Resource
                 UserAvatarColumn::make('avatar')
                     ->toggleable()
                     ->label(__('filament::resources.columns.avatar'))
-                    ->options('&size=m&head_direction=3&gesture=sml&headonly=1'),
+                    ->options(['size' => 'm', 'head_direction' => 3, 'gesture' => 'sml', 'headonly' => true]),
 
                 TextColumn::make('username')
                     ->label(__('filament::resources.columns.username'))
