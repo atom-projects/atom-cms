@@ -153,7 +153,7 @@
                                                 class="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-blue-50 dark:hover:bg-gray-700 transition-colors"
                                                 role="option"
                                                 :aria-selected="activeIndex === index">
-                                                <img :src="'{{ setting('avatar_imager') }}' + user.look + '&direction=2&head_direction=3&gesture=sml&headonly=1&size=s'"
+                                                <img :src="user.avatar_url"
                                                      alt="" class="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-600">
                                                 <span x-text="user.username" class="text-sm font-medium dark:text-gray-200"></span>
                                             </li>

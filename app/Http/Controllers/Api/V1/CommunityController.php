@@ -10,6 +10,7 @@ use App\Http\Requests\StaffApplicationFormRequest;
 use App\Http\Resources\Api\V1\PublicUserResource;
 use App\Models\Community\Staff\WebsiteOpenPosition;
 use App\Models\User;
+use App\Services\Avatar\AvatarImager;
 use App\Services\Community\CameraService;
 use App\Services\Community\CommunityReadService;
 use App\Services\Community\StaffService;
@@ -31,7 +32,9 @@ class CommunityController extends Controller
 
     public function users(SearchUsersRequest $request, UserApiService $users): JsonResponse
     {
-        return response()->json(['data' => $users->searchUsers($request->string('q')->toString())]);
+        $imager = app(AvatarImager::class);
+
+        return response()->json(['data' => array_map(fn (array $row): array => [...$row, 'avatar' => $imager->apiPrefix($row['look'])], $users->searchUsers($request->string('q')->toString()))]);
     }
 
     public function user(User $user): PublicUserResource

@@ -23,7 +23,7 @@
                     @foreach($items as $item)
                         <div class="px-3 h-[100px] rounded bg-gray-200 dark:bg-gray-700 flex gap-4 items-center overflow-hidden">
                             <div class="w-12 h-12 overflow-hidden rounded-full flex items-center justify-center bg-gray-300 dark:bg-gray-800">
-                                <img src="{{ sprintf('%s/%s', setting('avatar_imager'), $item['user']->look) }}&headonly=1" alt="">
+                                <img src="{{ avatar_url($item['user'], ['headonly' => true]) }}" alt="">
                             </div>
 
                             <div class="flex flex-col gap-y-2">

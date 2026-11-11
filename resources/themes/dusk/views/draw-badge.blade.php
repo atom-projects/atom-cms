@@ -116,7 +116,7 @@
                             {{ auth()->user()->username}}
                         </div>
                         <div class="avatara"
-                            style="float: left;background: url('{{ setting('avatar_imager') }}{{ auth()->user()->look}}&direction=4&head_direction=3') no-repeat;width: 60px;height: 120px;margin-left: 15px;margin-top: 10px;">
+                            style="float: left;background: url('{{ avatar_url(auth()->user(), ['direction' => 4, 'head_direction' => 3]) }}') no-repeat;width: 60px;height: 120px;margin-left: 15px;margin-top: 10px;">
                         </div>
                         <div class="preview" style='float: left;margin-left: 15px;margin-top: 7px;'>
                             <canvas width="40" height="40" x-ref="previewCanvas" style="image-rendering: pixelated; background: transparent; role="img" aria-label="{{ __('Badge preview') }}""></canvas>

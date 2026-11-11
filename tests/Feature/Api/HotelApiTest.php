@@ -4,6 +4,7 @@ use App\Models\User;
 
 beforeEach(function () {
     installHotel();
+    setSetting('avatar_imager', 'https://imager.test/?figure=');
 });
 
 test('a user can be fetched by username', function () {
@@ -21,6 +22,7 @@ test('a user can be fetched by username', function () {
                 'username' => $user->username,
                 'motto' => $user->motto,
                 'look' => $user->look,
+                'avatar_url' => 'https://imager.test/?figure=' . $user->look . '&direction=4&head_direction=3&action=wav',
             ],
         ]);
 });
@@ -38,7 +40,7 @@ test('users can be searched by prefix', function () {
     $this->getJson('/api/users/search?q=SearchTarget')
         ->assertOk()
         ->assertExactJson([
-            ['username' => 'SearchTargetOne', 'look' => $target->look],
+            ['username' => 'SearchTargetOne', 'look' => $target->look, 'avatar_url' => 'https://imager.test/?figure=' . $target->look . '&direction=2&head_direction=3&gesture=sml&size=s&headonly=1'],
         ]);
 });
 
@@ -68,6 +70,7 @@ test('online users and their count are reported', function () {
                 'username' => $online->username,
                 'motto' => $online->motto,
                 'look' => $online->look,
+                'avatar_url' => 'https://imager.test/?figure=' . $online->look . '&direction=4&head_direction=3&action=wav',
             ]],
         ]);
 });

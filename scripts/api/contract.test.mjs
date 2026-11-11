@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { validateResponse } from './contract.mjs';
 
-const publicUser = { id: 1, username: 'Alice', motto: 'Hello', look: 'hd-180-1', online: false };
+const publicUser = { id: 1, username: 'Alice', motto: 'Hello', look: 'hd-180-1', avatar: null, online: false };
 const profile = (data) => ({ method: 'GET', path: '/api/v1/users/Alice', status: 200, body: { data } });
 
 test('public projection rejects private fields and incorrect scalar types', () => {
@@ -11,6 +11,10 @@ test('public projection rejects private fields and incorrect scalar types', () =
     assert.throws(() => validateResponse(profile({ ...publicUser, id: '1' })), /integer/);
     const { look, ...missingLook } = publicUser;
     assert.throws(() => validateResponse(profile(missingLook)), /look/);
+    const { avatar, ...missingAvatar } = publicUser;
+    assert.throws(() => validateResponse(profile(missingAvatar)), /avatar/);
+    assert.doesNotThrow(() => validateResponse(profile({ ...publicUser, avatar: 'https://hotel.test/avatars/v1/hd-180-1/0123456789abcdef' })));
+    assert.throws(() => validateResponse(profile({ ...publicUser, avatar: 5 })), /avatar/);
 });
 
 test('literal online route wins over user binding, with query strings ignored', () => {

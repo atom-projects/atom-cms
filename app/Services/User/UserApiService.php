@@ -46,7 +46,7 @@ class UserApiService
      * Prefix-search usernames, escaping LIKE wildcards so user input cannot
      * widen the match.
      *
-     * @return array<int, array{username: string, look: string}>
+     * @return array<int, array{username: string, look: string, avatar_url: string}>
      */
     public function searchUsers(string $query, int $limit = 8): array
     {
@@ -61,6 +61,7 @@ class UserApiService
             ->map(fn (User $user): array => [
                 'username' => $user->username,
                 'look' => $user->look,
+                'avatar_url' => avatar_url($user, ['direction' => 2, 'head_direction' => 3, 'gesture' => 'sml', 'size' => 's', 'headonly' => true]),
             ])
             ->values()
             ->all();

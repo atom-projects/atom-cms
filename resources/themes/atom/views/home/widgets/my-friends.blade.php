@@ -6,7 +6,7 @@
                     <img
                         class="w-8 h-14 object-cover"
                         style="image-rendering: pixelated; object-position: -7px -7px;"
-                        src="{{ setting('avatar_imager') }}{{ $friend->user->look }}&direction=4&head_direction=4&action=sml&size=s"
+                        src="{{ avatar_url($friend->user, ['direction' => 4, 'head_direction' => 4, 'gesture' => 'sml', 'size' => 's']) }}"
                         alt="{{ $friend->user->username }}"
                     >
 

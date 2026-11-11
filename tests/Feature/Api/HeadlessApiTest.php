@@ -61,7 +61,7 @@ test('maintenance status exposes sanitized public content with five tasks per pa
     $this->getJson('/api/v1/status')->assertOk()->assertJsonPath('data.maintenance', true)
         ->assertJsonPath('data.maintenance_message', '<p>Updating the hotel</p>')->assertJsonCount(5, 'data.tasks.items')
         ->assertJsonPath('data.tasks.has_more', true)->assertJsonPath('data.tasks.items.0.completed', true)
-        ->assertJsonPath('data.tasks.items.0.user', ['username' => $this->member->username, 'look' => $this->member->look]);
+        ->assertJsonPath('data.tasks.items.0.user', ['username' => $this->member->username, 'look' => $this->member->look, 'avatar' => null]);
     $this->getJson('/api/v1/status?page=2')->assertOk()->assertJsonCount(1, 'data.tasks.items')->assertJsonPath('data.tasks.current_page', 2)->assertJsonPath('data.tasks.has_more', false);
     setSetting('maintenance_enabled', '0');
     $this->getJson('/api/v1/status')->assertOk()->assertJsonPath('data.maintenance_message', null)->assertJsonCount(0, 'data.tasks.items');
@@ -85,7 +85,7 @@ test('ban details remain private and readable during access restrictions', funct
 
 test('public projections do not leak account secrets or balances', function () {
     $this->getJson('/api/v1/users/' . $this->member->username)->assertOk()->assertExactJson(['data' => [
-        'id' => $this->member->id, 'username' => $this->member->username, 'motto' => (string) $this->member->motto, 'look' => $this->member->look, 'online' => false,
+        'id' => $this->member->id, 'username' => $this->member->username, 'motto' => (string) $this->member->motto, 'look' => $this->member->look, 'avatar' => null, 'online' => false,
     ]]);
     $this->get('/api/v1/me')->assertUnauthorized()->assertJsonPath('code', 'unauthenticated');
     $this->actingAs($this->member)->getJson('/api/v1/me')->assertOk()->assertJsonPath('data.mail', $this->member->mail)->assertJsonPath('data.website_balance.amount_minor', 2000)->assertJsonMissingPath('data.password')->assertJsonMissingPath('data.auth_ticket');
@@ -348,7 +348,7 @@ test('friend guestbook and leaderboard projections keep public presence and mott
     $this->member->receivedHomeMessages()->create(['user_id' => $friend->id, 'content' => 'Hello']);
     app(CurrencyRepository::class)->give($friend, CurrencyTypes::Duckets, 1000000);
     DB::table('users_settings')->where('user_id', $friend->id)->update(['achievement_score' => 1000000]);
-    $expected = ['id' => $friend->id, 'username' => $friend->username, 'motto' => 'Public motto', 'look' => $friend->look, 'online' => true];
+    $expected = ['id' => $friend->id, 'username' => $friend->username, 'motto' => 'Public motto', 'look' => $friend->look, 'avatar' => null, 'online' => true];
 
     $this->actingAs($this->member)->getJson('/api/v1/me')->assertOk()->assertJsonPath('data.online_friends.0', [...$expected, 'last_online' => 1788264000]);
     foreach (['My Friends' => 'data.content.items.0', 'My Guestbook' => 'data.content.0.author'] as $name => $path) {

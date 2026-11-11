@@ -96,7 +96,7 @@ test('ada public friend home and leaderboard projections read live emulator pres
     DB::table('player_friendships')->insert(['origin_player_id' => $this->member->id, 'target_player_id' => $friend->id, 'status' => 2, 'created_at' => now()]);
     $this->member->receivedHomeMessages()->create(['user_id' => $friend->id, 'content' => 'Hello']);
     app(CurrencyRepository::class)->give($friend, CurrencyTypes::Credits, 1000000);
-    $expected = ['id' => $friend->id, 'username' => $friend->username, 'motto' => 'Live motto', 'look' => $friend->look, 'online' => true];
+    $expected = ['id' => $friend->id, 'username' => $friend->username, 'motto' => 'Live motto', 'look' => $friend->look, 'avatar' => null, 'online' => true];
 
     $this->actingAs($this->member)->getJson('/api/v1/me')->assertOk()->assertJsonPath('data.online_friends.0', [...$expected, 'last_online' => 1788264000]);
     foreach (['My Friends' => 'data.content.items.0', 'My Guestbook' => 'data.content.0.author'] as $name => $path) {
