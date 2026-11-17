@@ -1,7 +1,8 @@
 // The client page keeps the hotel running while the website opens in a frame on top of it.
 const pathOf = (url) => {
     try {
-        return new URL(url, window.location.href).pathname;
+        const target = new URL(url, document.baseURI);
+        return target.origin === window.location.origin ? target.pathname : "";
     } catch {
         return "";
     }
