@@ -13,9 +13,12 @@ window.FlashExternalInterface.disconnect = () => {
 if (frame && frame.contentWindow) {
     window.addEventListener("message", (ev) => {
         if (!frame || ev.source !== frame.contentWindow) return;
-        const legacyInterface = "Nitro_LegacyExternalInterface";
         if (typeof ev.data !== "string") return;
-        if (ev.data.startsWith(legacyInterface)) {
+        const legacyInterface = [
+            "Nitro_LegacyExternalInterface",
+            "Volt_LegacyExternalInterface",
+        ].find((prefix) => ev.data.startsWith(prefix));
+        if (legacyInterface) {
             const { method, params } = JSON.parse(
                 ev.data.substr(legacyInterface.length)
             );

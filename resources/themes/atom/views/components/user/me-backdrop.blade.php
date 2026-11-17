@@ -12,7 +12,7 @@
         </a>
     </div>
 
-    <a data-turbolinks="false" href="{{ route('nitro-client') }}">
+    <a data-turbolinks="false" href="{{ route('nitro-client') }}" target="hotel-client">
         <button
             class="relative rounded-full bg-white/90 px-6 py-2 text-lg font-semibold text-black transition duration-300 ease-in-out hover:bg-white dark:bg-gray-900 dark:text-white">
             {{ __('Go to :hotel', ['hotel' => setting('hotel_name')]) }}
