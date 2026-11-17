@@ -53,12 +53,7 @@
         class="fixed inset-0 z-20 m-0 h-full w-full border-none p-0"></iframe>
 
     <a data-return-to-hotel hidden href="{{ route('nitro-client') }}"
-        class="fixed right-6 bottom-6 z-30 flex items-center gap-3 rounded-full bg-white/95 px-6 py-3 text-lg font-semibold text-black shadow-lg ring-1 ring-black/10 transition duration-300 ease-in-out hover:scale-105 hover:bg-white dark:bg-gray-900 dark:text-white dark:ring-white/10">
-        <span class="relative flex h-3 w-3" aria-hidden="true">
-            <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75"></span>
-            <span class="relative inline-flex h-3 w-3 rounded-full bg-green-500"></span>
-        </span>
-
+        class="fixed right-6 bottom-6 z-30 flex items-center rounded-full bg-white/95 px-6 py-3 text-lg font-semibold text-black shadow-lg ring-1 ring-black/10 transition duration-300 ease-in-out hover:scale-105 hover:bg-white dark:bg-gray-900 dark:text-white dark:ring-white/10">
         {{ __('Return to :hotel', ['hotel' => setting('hotel_name')]) }}
     </a>
 
