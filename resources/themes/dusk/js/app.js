@@ -10,6 +10,7 @@ import "swiper/css/navigation";
 import "swiper/css/pagination";
 
 import "../../../js/components/HomeManager.js";
+import "../../../js/components/ClientShell.js";
 
 window.Alpine = Alpine;
 
