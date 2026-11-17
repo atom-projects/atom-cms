@@ -4,42 +4,42 @@ function disconnected() {
         "display: block !important;";
 }
 
-let frame = document.getElementById("nitro");
-window.FlashExternalInterface = {};
+const frame = document.getElementById("nitro");
+window.FlashExternalInterface ??= {};
 window.FlashExternalInterface.disconnect = () => {
     disconnected();
 };
 
-if (frame && frame.contentWindow) {
-    window.addEventListener("message", (ev) => {
-        if (!frame || ev.source !== frame.contentWindow) return;
-        if (typeof ev.data !== "string") return;
-        const legacyInterface = [
+if (frame) {
+    const clientSource = new URL(frame.src);
+
+    window.addEventListener("message", (event) => {
+        if (
+            event.source !== frame.contentWindow ||
+            event.origin !== clientSource.origin ||
+            typeof event.data !== "string"
+        ) return;
+
+        const prefix = [
             "Nitro_LegacyExternalInterface",
             "Volt_LegacyExternalInterface",
-        ].find((prefix) => ev.data.startsWith(prefix));
-        if (legacyInterface) {
-            const { method, params } = JSON.parse(
-                ev.data.substr(legacyInterface.length)
-            );
-            if (!("FlashExternalInterface" in window)) return;
-            const fn = window.FlashExternalInterface[method];
-            if (!fn) return;
-            fn(...params);
+        ].find((value) => event.data.startsWith(value));
+        if (!prefix) return;
+
+        let message;
+        try {
+            message = JSON.parse(event.data.slice(prefix.length));
+        } catch {
             return;
         }
-    });
-}
-// Disconnected from client end
 
-// Nitro is a single page app, so the frame only ever loads once. A later load means
-// something inside it navigated away - "Go to hotel" on Nitro's own disconnected
-// screen, for instance - which would leave the client buttons on top of the website.
-if (frame) {
-    const clientSource = new URL(
-        frame.getAttribute("src") || "",
-        window.location.href
-    );
+        if (message?.method === "disconnect") {
+            window.FlashExternalInterface.disconnect();
+        } else if (message?.method === "logout") {
+            window.FlashExternalInterface.logout?.();
+        }
+    });
+
     const clientBase =
         clientSource.origin + clientSource.pathname.replace(/[^/]*$/, "");
 
