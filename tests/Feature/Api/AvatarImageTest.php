@@ -46,6 +46,15 @@ test('redirects a user look to its signed image with the Habbo imager defaults',
     expect($response->headers->get('Cache-Control'))->toContain('public')->toContain('max-age=86400');
 });
 
+test('draws a user look that ends with a dot as the game saves it', function () {
+    User::factory()->create(['look' => AVATAR_TEST_LOOK . '.', 'gender' => 'F']);
+
+    $response = $this->get('/api/avatar-image?figure=' . AVATAR_TEST_LOOK . '.');
+
+    $response->assertRedirect(signedAvatar(AVATAR_TEST_LOOK, 'f-m-full-2-2-std-none-nrm-0-0-0-still'));
+    expect($response->headers->get('Cache-Control'))->toContain('public');
+});
+
 test('uses the gender of the user who wears the look', function () {
     User::factory()->create(['look' => AVATAR_TEST_LOOK, 'gender' => 'F']);
 

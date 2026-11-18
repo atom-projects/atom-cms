@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Services\Avatar\AvatarImager;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class AvatarImageController extends Controller
 {
@@ -14,9 +15,11 @@ class AvatarImageController extends Controller
     {
         abort_unless($imager->enabled(), 404);
 
-        $figure = $request->query('figure');
+        $look = $request->query('figure');
+        // The game saves looks with a dot at the end; the renderer draws the same figure without it.
+        $figure = is_string($look) ? Str::chopEnd($look, '.') : null;
         $gender = is_string($figure) && $imager->isDrawable($figure)
-            ? User::query()->whereLike('look', $figure, caseSensitive: true)->value('gender')
+            ? User::query()->whereLike('look', $look, caseSensitive: true)->value('gender')
             : null;
 
         if ($gender === null) {
