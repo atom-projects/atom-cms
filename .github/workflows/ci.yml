@@ -95,7 +95,7 @@ jobs:
         run: npm ci --ignore-scripts
 
       - name: Security advisories
-        run: npm audit --audit-level=moderate
+        run: node scripts/audit/npm-audit.mjs
 
       - name: Check generated API types
         run: node scripts/api/generate.mjs --check
