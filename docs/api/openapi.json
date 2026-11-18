@@ -4917,11 +4917,15 @@
               },
               "air_enabled": {
                 "type": "boolean"
+              },
+              "buttons_enabled": {
+                "type": "boolean"
               }
             },
             "required": [
               "flash_enabled",
-              "air_enabled"
+              "air_enabled",
+              "buttons_enabled"
             ],
             "additionalProperties": false
           },
