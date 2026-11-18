@@ -1,4 +1,5 @@
 import "./bootstrap";
+import "../../../js/components/SessionChannel.js";
 import { initFlowbite, initPopovers } from "flowbite";
 
 import { Livewire, Alpine } from "livewire";
