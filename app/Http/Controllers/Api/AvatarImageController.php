@@ -12,21 +12,23 @@ class AvatarImageController extends Controller
 {
     public function __invoke(Request $request, AvatarImager $imager): RedirectResponse
     {
-        abort_if(blank(config('habbo.avatar_imager.secret')), 404);
+        abort_unless($imager->enabled(), 404);
 
         $figure = $request->query('figure');
-        $user = is_string($figure) && $imager->isDrawable($figure)
-            ? User::query()->where('look', $figure)->first()
+        $gender = is_string($figure) && $imager->isDrawable($figure)
+            ? User::query()->whereLike('look', $figure, caseSensitive: true)->value('gender')
             : null;
 
-        if ($user === null) {
-            $figure = (string) (setting('start_look') ?: 'hr-100-61.hd-180-1.ch-210-66.lg-270-110.sh-305-62');
+        if ($gender === null) {
+            $figure = (string) setting('start_look');
+
+            if (! $imager->isDrawable($figure)) {
+                $figure = 'hr-100-61.hd-180-1.ch-210-66.lg-270-110.sh-305-62';
+            }
         }
 
-        $gender = $user !== null && strtoupper((string) $user->gender) === 'F' ? 'f' : 'm';
-
         return redirect()
-            ->away($imager->signedUrl((string) $figure, $gender, $request->query()))
-            ->header('Cache-Control', 'public, max-age=86400');
+            ->away($imager->signedUrl((string) $figure, strtoupper((string) $gender) === 'F' ? 'f' : 'm', $request->query()))
+            ->header('Cache-Control', $gender === null ? 'no-store' : 'public, max-age=86400');
     }
 }

@@ -14,6 +14,17 @@ final readonly class AvatarImager
 
     private const EXPRESSIONS = ['wav' => 'wave', 'blw' => 'kiss', 'lgh' => 'laugh'];
 
+    public function enabled(): bool
+    {
+        $secret = (string) config('habbo.avatar_imager.secret');
+        $version = (int) config('habbo.avatar_imager.version');
+
+        // The renderer counts the secret length in UTF-16 code units.
+        return filled($secret)
+            && strlen(mb_convert_encoding($secret, 'UTF-16LE', 'UTF-8')) >= 64
+            && $version >= 1 && $version <= 999999;
+    }
+
     /**
      * @param  array<string, mixed>  $query
      */
@@ -24,14 +35,14 @@ final readonly class AvatarImager
         $signature = substr(hash_hmac('sha256', "v{$version}/{$figure}/{$variant}", (string) config('habbo.avatar_imager.secret')), 0, 16);
 
         $base = rtrim((string) config('habbo.avatar_imager.url'), '/');
-        $base = str_starts_with($base, '/') ? url($base) : $base;
+        $base = str_starts_with($base, '/') ? rtrim((string) config('app.url'), '/') . $base : $base;
 
         return "{$base}/v{$version}/{$figure}/{$signature}.{$variant}.png";
     }
 
     public function isDrawable(string $figure): bool
     {
-        return preg_match('/^[a-z0-9][a-z0-9.-]{0,239}$/', $figure) === 1
+        return preg_match('/^[a-z0-9][a-z0-9.-]{0,239}\z/', $figure) === 1
             && ! str_contains($figure, '..')
             && ! str_ends_with($figure, '.')
             && ! str_ends_with($figure, '-');
@@ -49,24 +60,23 @@ final readonly class AvatarImager
         $headDirection = $this->direction($query, 'head_direction');
         $posture = 'std';
         $expression = 'none';
-        $handItem = null;
-        $waves = false;
+        $handItem = 0;
+        $actions = explode(',', $this->text($query, 'action'));
+        $animated = $this->text($query, 'frame') === '' && in_array($actions[0], ['wlk', 'wav'], true);
 
-        foreach (explode(',', strtolower($this->text($query, 'action'))) as $token) {
+        foreach ($actions as $action) {
+            $token = strtolower($action);
+
             if (in_array($token, self::POSTURES, true)) {
                 $posture = $token;
             } elseif (isset(self::EXPRESSIONS[$token])) {
                 $expression = self::EXPRESSIONS[$token];
-                $waves = $waves || $token === 'wav';
             } elseif (preg_match('/^crr=(\d{1,5})$/', $token, $match) === 1) {
                 $handItem = (int) $match[1];
             }
         }
 
-        // Habbo draws a waving avatar as a whole body even when a head is asked for.
-        $headOnly = $this->text($query, 'headonly') === '1' && ! ($waves && $handItem === null);
-
-        if ($headOnly) {
+        if (! $animated && $this->text($query, 'headonly') === '1') {
             return "{$gender}-{$size}-head-{$headDirection}-{$headDirection}-std-none-{$gesture}-0-0-0-still";
         }
 
@@ -75,7 +85,7 @@ final readonly class AvatarImager
             $headDirection = 6 - $headDirection;
         }
 
-        return implode('-', [$gender, $size, 'full', $direction, $headDirection, $posture, $expression, $gesture, 0, 0, $handItem ?? 0, 'still']);
+        return implode('-', [$gender, $size, 'full', $direction, $headDirection, $posture, $expression, $gesture, 0, 0, $handItem, $animated ? 'anim' : 'still']);
     }
 
     /**

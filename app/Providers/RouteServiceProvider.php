@@ -28,7 +28,7 @@ class RouteServiceProvider extends ServiceProvider
         $this->configureRateLimiting();
 
         $this->routes(function () {
-            Route::get('api/avatar-image', AvatarImageController::class)->name('api.avatar-image');
+            Route::get('api/avatar-image', AvatarImageController::class)->middleware('throttle:avatar-images')->name('api.avatar-image');
 
             Route::middleware('api')
                 ->prefix('api')
@@ -50,6 +50,8 @@ class RouteServiceProvider extends ServiceProvider
      */
     protected function configureRateLimiting(): void
     {
+        RateLimiter::for('avatar-images', fn (Request $request) => Limit::perMinute(300)->by($request->ip()));
+
         RateLimiter::for('api', function (Request $request) {
             return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
         });

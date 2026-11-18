@@ -145,7 +145,7 @@ test('uses a drawable default when the starting look is invalid', function () {
 
     $this->get('/api/avatar-image')->assertRedirect(signedAvatar(
         'hr-100-61.hd-180-1.ch-210-66.lg-270-110.sh-305-62',
-        'm-m-full-2-2-std-none-nrm-0-0-0-still'
+        'm-m-full-2-2-std-none-nrm-0-0-0-still',
     ));
 });
 
