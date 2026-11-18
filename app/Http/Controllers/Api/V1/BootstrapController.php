@@ -72,7 +72,7 @@ class BootstrapController extends Controller
             'locales' => $installed ? WebsiteLanguage::query()->get(['language', 'country_code'])->map(fn (WebsiteLanguage $language): array => ['name' => $language->language, 'locale' => $language->country_code])->all() : [],
             'assets' => ['header' => url(setting('cms_header', '/assets/images/kasja_mepage_header.png')), 'me_backdrop' => url(setting('cms_me_backdrop', '/assets/images/kasja_mepage_image.png')), 'logo' => url(setting('cms_logo', '/assets/images/logo.png')), 'avatar' => setting('avatar_imager'), 'badge' => url(setting('badges_path', '/client/flash/c_images/album1584'))],
             'color_mode' => setting('cms_color_mode') === 'dark' ? 'dark' : 'light',
-            'clients' => ['flash_enabled' => (bool) config('habbo.client.flash_enabled'), 'air_enabled' => (bool) config('habbo.client.air_enabled')],
+            'clients' => ['flash_enabled' => (bool) config('habbo.client.flash_enabled'), 'air_enabled' => (bool) config('habbo.client.air_enabled'), 'buttons_enabled' => setting('enable_client_buttons') === '1'],
             'payments' => ['paypal_configured' => PaypalConfiguration::isConfigured()],
             'registration' => ['enabled' => ! (bool) setting('disable_registration'), 'requires_beta_code' => (bool) setting('requires_beta_code')],
             'reactions' => config('habbo.reactions'),

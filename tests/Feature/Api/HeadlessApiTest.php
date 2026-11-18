@@ -390,6 +390,7 @@ test('bootstrap exposes theme artwork and enabled integrations without credentia
     setSetting('cms_header', '/storage/custom-header.png');
     setSetting('cms_me_backdrop', 'https://images.example.com/backdrop.png');
     setSetting('cms_color_mode', 'dark');
+    setSetting('enable_client_buttons', '1');
     config([
         'habbo.client.flash_enabled' => true,
         'habbo.client.air_enabled' => true,
@@ -404,6 +405,7 @@ test('bootstrap exposes theme artwork and enabled integrations without credentia
         ->assertJsonPath('data.color_mode', 'dark')
         ->assertJsonPath('data.clients.flash_enabled', true)
         ->assertJsonPath('data.clients.air_enabled', true)
+        ->assertJsonPath('data.clients.buttons_enabled', true)
         ->assertJsonPath('data.payments', ['paypal_configured' => true])
         ->assertDontSee('private-paypal-client')->assertDontSee('private-paypal-secret');
 });
@@ -416,6 +418,7 @@ test('bootstrap uses light mode and keeps unavailable clients and top ups disabl
         ->assertJsonPath('data.color_mode', 'light')
         ->assertJsonPath('data.clients.flash_enabled', false)
         ->assertJsonPath('data.clients.air_enabled', false)
+        ->assertJsonPath('data.clients.buttons_enabled', false)
         ->assertJsonPath('data.payments.paypal_configured', false);
 });
 
