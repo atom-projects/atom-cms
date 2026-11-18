@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\User;
+use App\Services\Avatar\AvatarImager;
 use App\Services\HousekeepingPermissionsService;
 use App\Services\PermissionsService;
 use App\Services\SettingsService;
@@ -17,6 +18,25 @@ if (! function_exists('setting')) {
     function setting(string $key, mixed $default = null): mixed
     {
         return app(SettingsService::class)->getOrDefault($key, $default);
+    }
+}
+
+if (! function_exists('avatar_url')) {
+    /**
+     * The address of an avatar image for a figure string, or for anything
+     * with a `look` such as a user.
+     *
+     * @param  array<string, mixed>  $options  See AvatarImager::url().
+     */
+    function avatar_url(object|string|null $subject, array $options = []): string
+    {
+        if (! is_object($subject)) {
+            return app(AvatarImager::class)->url($subject, $options);
+        }
+
+        $gender = data_get($subject instanceof User ? $subject->getAttributes() : $subject, 'gender');
+
+        return app(AvatarImager::class)->url(data_get($subject, 'look'), $options, is_string($gender) ? $gender : null);
     }
 }
 

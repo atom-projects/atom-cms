@@ -20,7 +20,7 @@
         <img
             class="w-16 h-auto ml-auto"
             style="image-rendering: pixelated;"
-            src="{{ setting('avatar_imager') }}{{ $user->look }}&direction=4&head_direction=4&size=m&gesture=sml"
+            src="{{ avatar_url($user, ['direction' => 4, 'head_direction' => 4, 'size' => 'm', 'gesture' => 'sml']) }}"
             alt="{{ $user->username }}"
         >
     </div>

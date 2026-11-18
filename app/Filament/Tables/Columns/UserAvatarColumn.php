@@ -6,7 +6,8 @@ use Filament\Tables\Columns\Column;
 
 class UserAvatarColumn extends Column
 {
-    protected ?string $avatarOptions = null;
+    /** @var array<string, mixed> */
+    protected array $avatarOptions = [];
 
     protected ?string $figurePointer = null;
 
@@ -14,19 +15,11 @@ class UserAvatarColumn extends Column
 
     public function getAvatarUrl(): string
     {
-        $record = $this->getRecord();
-        $figureImagerUrl = setting('avatar_imager');
-
-        if (! $figureImagerUrl) {
-            return '';
-        }
-
-        $figure = (string) data_get($record, $this->figurePointer ?? 'look', '');
-
-        return "{$figureImagerUrl}{$figure}{$this->avatarOptions}";
+        return avatar_url((string) data_get($this->getRecord(), $this->figurePointer ?? 'look', ''), $this->avatarOptions);
     }
 
-    public function options(string $avatarOptions): UserAvatarColumn
+    /** @param  array<string, mixed>  $avatarOptions  See AvatarImager::url(). */
+    public function options(array $avatarOptions): UserAvatarColumn
     {
         $this->avatarOptions = $avatarOptions;
 

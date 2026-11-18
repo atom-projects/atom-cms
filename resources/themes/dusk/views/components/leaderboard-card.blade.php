@@ -20,7 +20,7 @@
            <div class="flex gap-2 items-center">
               <div class="w-12 h-12 rounded-full overflow-hidden relative leaderboard-background">
                   <img class="absolute -top-2 left-0"
-                       src="{{ setting('avatar_imager') }}{{ $entry->user->look }}&head_direction=3&gesture=sml"
+                       src="{{ avatar_url($entry->user, ['head_direction' => 3, 'gesture' => 'sml']) }}"
                        alt=""/>
               </div>
 

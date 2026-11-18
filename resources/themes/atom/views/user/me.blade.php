@@ -17,7 +17,7 @@
             <div class="relative flex flex-wrap items-center justify-center gap-2 pl-2 sm:justify-start">
                 @foreach ($onlineFriends as $friend)
                     <div data-popover-target="friend-{{ $friend->username }}"
-                         style="image-rendering: pixelated; background-image: url({{ setting('avatar_imager') }}{{ $friend->look }}&direction=2&head_direction=3&gesture=sml&action=wav&headonly=1&size=s)"
+                         style="image-rendering: pixelated; background-image: url({{ avatar_url($friend, ['direction' => 2, 'head_direction' => 3, 'gesture' => 'sml', 'action' => 'wav', 'headonly' => true, 'size' => 's']) }})"
                          class="inline-block h-10 w-10 rounded-full border-2 border-gray-300 bg-center bg-no-repeat dark:border-gray-900">
                     </div>
 

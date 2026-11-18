@@ -657,11 +657,26 @@
                           },
                           "look": {
                             "type": "string"
+                          },
+                          "avatar_url": {
+                            "type": "string"
+                          },
+                          "avatar": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
                           }
                         },
                         "required": [
                           "username",
-                          "look"
+                          "look",
+                          "avatar_url",
+                          "avatar"
                         ],
                         "additionalProperties": false
                       }
@@ -4362,6 +4377,16 @@
           "look": {
             "type": "string"
           },
+          "avatar": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "online": {
             "type": "boolean"
           }
@@ -4371,6 +4396,7 @@
           "username",
           "motto",
           "look",
+          "avatar",
           "online"
         ],
         "additionalProperties": false
@@ -4986,6 +5012,16 @@
           "look": {
             "type": "string"
           },
+          "avatar": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "online": {
             "type": "boolean"
           },
@@ -5065,6 +5101,7 @@
           "username",
           "motto",
           "look",
+          "avatar",
           "online",
           "mail",
           "balances",
@@ -6956,11 +6993,22 @@
                   },
                   "look": {
                     "type": "string"
+                  },
+                  "avatar": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   }
                 },
                 "required": [
                   "username",
-                  "look"
+                  "look",
+                  "avatar"
                 ],
                 "additionalProperties": false
               },
@@ -7020,6 +7068,16 @@
           "look": {
             "type": "string"
           },
+          "avatar": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "online": {
             "type": "boolean"
           },
@@ -7032,6 +7090,7 @@
           "username",
           "motto",
           "look",
+          "avatar",
           "online",
           "last_online"
         ],

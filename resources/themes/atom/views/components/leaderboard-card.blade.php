@@ -28,9 +28,9 @@
                 </div>
 
                 <img @class([
-                    'mt-8' => !Str::contains(setting('avatar_imager'), 'www.habbo.com'),
+                    'mt-8' => !app(\App\Services\Avatar\AvatarImager::class)->usesOfficialSizes(),
                 ])
-                     src="{{ setting('avatar_imager') }}{{ $entry->user->look }}&size=b&head_direction=2&gesture=sml&headonly=1"
+                     src="{{ avatar_url($entry->user, ['head_direction' => 2, 'gesture' => 'sml', 'headonly' => true]) }}"
                      alt="" />
 
                 <div class="flex flex-col">

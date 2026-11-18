@@ -11,6 +11,7 @@ use App\Http\Middleware\ForceStaffTwoFactorMiddleware;
 use App\Http\Middleware\MaintenanceMiddleware;
 use App\Models\WebsiteDrawBadge;
 use App\Observers\WebsiteDrawBadgeObserver;
+use App\Services\Avatar\AvatarImager;
 use App\Services\HousekeepingPermissionsService;
 use App\Services\InstallationService;
 use App\Services\Payments\SrmklivePaypalGateway;
@@ -59,6 +60,14 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(PermissionsService::class);
 
         $this->app->singleton(HousekeepingPermissionsService::class);
+
+        $this->app->scoped(AvatarImager::class, fn (): AvatarImager => new AvatarImager(
+            config('habbo.avatar_imager.secret'),
+            (string) config('habbo.avatar_imager.url'),
+            max(1, (int) setting('avatar_imager_version', '1')),
+            (string) setting('avatar_imager', ''),
+            AvatarImager::DEFAULT_FIGURE,
+        ));
 
         // Authentication happens lazily on the gateway's first API call, so
         // resolving the client never performs OAuth HTTP inside the container.

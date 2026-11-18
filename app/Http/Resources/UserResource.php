@@ -16,6 +16,7 @@ class UserResource extends JsonResource
             'username' => $this->username,
             'motto' => $this->motto,
             'look' => $this->look,
+            'avatar_url' => avatar_url($this->resource, ['direction' => 4, 'head_direction' => 3, 'action' => 'wav']),
         ];
     }
 }
