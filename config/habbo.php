@@ -94,4 +94,10 @@ return [
         'locale' => env('PAYPAL_LOCALE', 'en_US'), // force gateway language  i.e. it_IT, es_ES, en_US ... (for express checkout only)
         'validate_ssl' => true,
     ],
+
+    'avatar_imager' => [
+        'secret' => env('AVATAR_IMAGER_SECRET'),
+        'url' => env('AVATAR_IMAGER_URL', '/avatars'),
+        'version' => (int) env('AVATAR_IMAGER_VERSION', 1),
+    ],
 ];
