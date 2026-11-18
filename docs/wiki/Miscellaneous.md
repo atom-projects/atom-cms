@@ -12,4 +12,13 @@ Change these in Housekeeping, under CMS settings. Your theme and emulator decide
 | `cms_header` | Header image of the Atom theme. |
 | `cms_me_backdrop` | Background of the user page in the Atom theme. |
 
+## Avatar images drawn by the hotel
+
+`avatar_imager` is the address the site puts before a figure, as in `https://www.habbo.com/habbo-imaging/avatarimage?figure=`. To draw avatars with your own client, including custom clothing, run the PlusEMU camera service with avatar images turned on. Then:
+
+1. Set `AVATAR_IMAGER_SECRET` in `.env` to the same secret as the camera service. Set `AVATAR_IMAGER_URL` if the images are not served at `/avatars` on this site.
+2. Set `avatar_imager` to `https://<your site>/api/avatar-image?figure=`.
+
+`/api/avatar-image` reads the same parameters as Habbo's imager and redirects to a signed image. It draws only looks that a user wears. Any other figure gets the `start_look` image.
+
 Every row in `website_settings` has a comment that explains it. If you edit the table by hand, see [changing settings](README.md#changing-settings).
