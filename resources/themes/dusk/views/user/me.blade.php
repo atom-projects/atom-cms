@@ -35,7 +35,7 @@
             </div>
 
            <div class="self-start lg:ml-14 w-full lg:w-64">
-               <a href="{{ route('nitro-client') }}">
+               <a href="{{ route('nitro-client') }}" target="hotel-client">
                    <button type="submit" class="w-full text-white bg-yellow-500 border-2 border-yellow-300 w-full rounded transition duration-300 ease-in-out hover:scale-[102%] py-2 px-4">
                        {{ __('Go to :hotel', ['hotel' => setting('hotel_name')]) }}
                    </button>

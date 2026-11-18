@@ -271,6 +271,11 @@ class WebsiteSettingsSeeder extends Seeder
                 'comment' => 'The path in which your index.html for nitro is located',
             ],
             [
+                'key' => 'enable_client_buttons',
+                'value' => '0',
+                'comment' => 'Shows the home, reload, fullscreen and online count buttons in the client (0 = off, 1 = on)',
+            ],
+            [
                 'key' => 'enable_discord_webhook',
                 'value' => '0',
                 'comment' => 'Specify whether Discord webhooks will be sent or not (0 for disabled, 1 for enabled)',
