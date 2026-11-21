@@ -6,6 +6,7 @@ use App\Services\InstallationService;
 use App\Services\SettingsService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\ViewErrorBag;
+use Illuminate\Testing\TestResponse;
 
 /**
  * Puts the hotel into a fresh, not-yet-installed state. The test database
@@ -36,6 +37,11 @@ function resetInstallationCaches(): void
     Cache::flush();
     app()->forgetInstance(InstallationService::class);
     app()->forgetInstance(SettingsService::class);
+}
+
+function enterInstallationKey(string $installationKey = 'test-install-key'): TestResponse
+{
+    return test()->post(route('installation.start-installation'), ['installation_key' => $installationKey]);
 }
 
 test('the wizard walks from key entry to the hotel without falling back', function () {
@@ -81,6 +87,7 @@ test('the wizard walks from key entry to the hotel without falling back', functi
 test('completion works even when the first-visit race left duplicate rows', function () {
     installHotel();
     $installation = startFreshInstallation();
+    enterInstallationKey();
 
     // Concurrent first-ever requests each pass the "no row yet" check in the
     // middleware and create their own record - reproduce that aftermath.
@@ -173,6 +180,7 @@ test('another visitor cannot hijack an installation in progress', function () {
 test('a step past the end of the wizard shows the last step instead of an exception', function () {
     installHotel();
     $installation = startFreshInstallation();
+    enterInstallationKey();
 
     // Older builds let a resubmitted form increment the step past the end,
     // and every later request then died on "Step does not exist".
@@ -191,6 +199,7 @@ test('a step past the end of the wizard shows the last step instead of an except
 test('saving past the last step stays on it rather than running off the end', function () {
     installHotel();
     startFreshInstallation();
+    enterInstallationKey();
     WebsiteInstallation::query()->update(['step' => WebsiteInstallation::LAST_STEP, 'user_ip' => '127.0.0.1']);
     resetInstallationCaches();
 
@@ -203,6 +212,7 @@ test('saving past the last step stays on it rather than running off the end', fu
 test('going back from the first step stays on it', function () {
     installHotel();
     startFreshInstallation();
+    enterInstallationKey();
     WebsiteInstallation::query()->update(['step' => 1, 'user_ip' => '127.0.0.1']);
     resetInstallationCaches();
 
@@ -231,6 +241,7 @@ test('unknown installation steps are bounced back to the current step', function
 test('saving a step only writes the settings that belong to it', function () {
     installHotel();
     $installation = startFreshInstallation();
+    enterInstallationKey();
     $installation->update(['step' => 1, 'user_ip' => '127.0.0.1']);
     resetInstallationCaches();
 
@@ -330,4 +341,88 @@ test('after entering the key the owner can step back and restart', function () {
     expect($installation->step)->toBe(0)
         ->and($installation->installation_key)->not->toBe('test-install-key')
         ->and($installation->user_ip)->toBeNull();
+});
+
+test('after the key step only the session that entered the key can use the wizard', function (string $method, string $route, array $parameters, array $server) {
+    config(['habbo.trusted_proxies' => '*']);
+    installHotel();
+    startFreshInstallation();
+
+    enterInstallationKey()->assertRedirect(route('installation.show-step', 1));
+    $this->post(route('installation.save-step'), ['hotel_name' => 'Testaria'])
+        ->assertRedirect(route('installation.show-step', 2));
+    $settings = WebsiteSetting::query()->pluck('value', 'key')->all();
+
+    $this->flushSession();
+    $this->call($method, route($route, $parameters), ['hotel_name' => 'Hijacked'], [], [], $server)
+        ->assertRedirect(route('installation.index'));
+
+    resetInstallationCaches();
+
+    $installation = WebsiteInstallation::first();
+    expect(WebsiteInstallation::where('completed', true)->exists())->toBeFalse()
+        ->and($installation->step)->toBe(2)
+        ->and($installation->installation_key)->toBe('test-install-key')
+        ->and(WebsiteSetting::query()->pluck('value', 'key')->all())->toBe($settings);
+})->with([
+    'view the current step' => ['GET', 'installation.show-step', ['step' => 2]],
+    'save a step' => ['POST', 'installation.save-step', []],
+    'go back a step' => ['POST', 'installation.previous-step', []],
+    'restart the installation' => ['POST', 'installation.restart', []],
+    'complete the installation' => ['POST', 'installation.complete', []],
+])->with([
+    'from the owner address' => [[]],
+    'with a forged forwarded owner address' => [['REMOTE_ADDR' => '198.51.100.7', 'HTTP_X_FORWARDED_FOR' => '127.0.0.1']],
+]);
+
+test('restarting the installation ends every earlier key acceptance', function () {
+    installHotel();
+    startFreshInstallation();
+
+    enterInstallationKey()->assertRedirect(route('installation.show-step', 1));
+    $this->post(route('installation.restart'))->assertRedirect(route('installation.index'));
+    $staleSession = session()->all();
+
+    $newKey = WebsiteInstallation::first()->installation_key;
+    $this->flushSession();
+    enterInstallationKey($newKey)->assertRedirect(route('installation.show-step', 1));
+
+    $this->flushSession();
+    $this->withSession($staleSession);
+    $this->get(route('installation.show-step', 1))->assertRedirect(route('installation.index'));
+    $this->post(route('installation.save-step'), ['hotel_name' => 'Hijacked'])
+        ->assertRedirect(route('installation.index'));
+
+    expect(WebsiteInstallation::first()->step)->toBe(1);
+
+    enterInstallationKey($newKey)->assertRedirect(route('installation.show-step', 1));
+    $this->get(route('installation.show-step', 1))->assertOk();
+});
+
+test('an owner whose session ended enters the key again and continues at the same step', function () {
+    installHotel();
+    startFreshInstallation();
+
+    enterInstallationKey()->assertRedirect(route('installation.show-step', 1));
+    $this->post(route('installation.save-step'), ['hotel_name' => 'Testaria'])
+        ->assertRedirect(route('installation.show-step', 2));
+
+    $this->flushSession();
+    $this->get(route('installation.show-step', 2))->assertRedirect(route('installation.index'));
+    $this->get(route('installation.index'))->assertOk();
+
+    enterInstallationKey()->assertRedirect(route('installation.show-step', 2));
+    $this->get(route('installation.show-step', 2))->assertOk();
+    $this->get(route('installation.index'))->assertRedirect(route('installation.show-step', 2));
+});
+
+test('an installation without a step cannot be completed without the key', function () {
+    installHotel();
+    startFreshInstallation();
+    WebsiteInstallation::query()->update(['step' => null]);
+    resetInstallationCaches();
+
+    $this->post(route('installation.complete'))->assertRedirect(route('installation.index'));
+
+    expect(WebsiteInstallation::where('completed', true)->exists())->toBeFalse();
 });
