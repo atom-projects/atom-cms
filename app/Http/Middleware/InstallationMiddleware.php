@@ -86,7 +86,6 @@ class InstallationMiddleware
                 'step' => 0,
                 'completed' => false,
                 'installation_key' => Str::uuid(),
-                'user_ip' => request()->ip(),
             ]);
 
             if ($installation->completed) {
@@ -138,7 +137,12 @@ class InstallationMiddleware
 
     private function isRedirectToWelcome(Request $request, WebsiteInstallation $installation): bool
     {
-        return $installation->step === 0 && $request->getRequestUri() !== '/installation' && $request->method() !== 'POST';
+        return $installation->step === 0 && ! $this->isKeySubmission($request);
+    }
+
+    private function isKeySubmission(Request $request): bool
+    {
+        return $request->isMethod('POST') && $request->is('installation/start-installation');
     }
 
     private function isInvalidAccess(Request $request, WebsiteInstallation $installation): bool
