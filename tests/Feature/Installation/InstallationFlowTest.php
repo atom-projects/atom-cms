@@ -252,3 +252,82 @@ test('saving a step only writes the settings that belong to it', function () {
     expect(WebsiteSetting::where('key', $stepOneKey)->value('value'))->toBe('legit step one value')
         ->and(WebsiteSetting::where('key', $laterStepKey)->value('value'))->toBe($laterStepValue);
 });
+
+test('a visitor without the key cannot complete the installation', function () {
+    installHotel();
+    startFreshInstallation();
+
+    $this->post(route('installation.complete'))->assertRedirect(route('installation.index'));
+
+    resetInstallationCaches();
+
+    expect(WebsiteInstallation::where('completed', true)->exists())->toBeFalse();
+    $this->get('/')->assertRedirect(route('installation.index'));
+});
+
+test('a visitor without the key cannot save a step', function () {
+    installHotel();
+    startFreshInstallation();
+    $hotelName = WebsiteSetting::where('key', 'hotel_name')->value('value');
+
+    $this->post(route('installation.save-step'), ['hotel_name' => 'Hijacked'])
+        ->assertRedirect(route('installation.index'));
+
+    expect(WebsiteInstallation::first()->step)->toBe(0)
+        ->and(WebsiteSetting::where('key', 'hotel_name')->value('value'))->toBe($hotelName);
+});
+
+test('a visitor without the key cannot go to the previous step', function () {
+    installHotel();
+    startFreshInstallation();
+
+    $this->post(route('installation.previous-step'))->assertRedirect(route('installation.index'));
+
+    expect(WebsiteInstallation::first()->step)->toBe(0);
+});
+
+test('a visitor without the key cannot restart the installation and rotate the key', function () {
+    installHotel();
+    startFreshInstallation();
+
+    $this->post(route('installation.restart'))->assertRedirect(route('installation.index'));
+
+    expect(WebsiteInstallation::first()->installation_key)->toBe('test-install-key');
+
+    $this->post(route('installation.start-installation'), ['installation_key' => 'test-install-key'])
+        ->assertRedirect(route('installation.show-step', 1));
+});
+
+test('the first visitor is not bound as the installer before the key is accepted', function () {
+    WebsiteInstallation::query()->delete();
+    resetInstallationCaches();
+
+    $this->get(route('installation.index'))->assertOk();
+
+    $installation = WebsiteInstallation::sole();
+    expect($installation->user_ip)->toBeNull();
+
+    $this->post(route('installation.start-installation'), ['installation_key' => $installation->installation_key])
+        ->assertRedirect(route('installation.show-step', 1));
+
+    expect(WebsiteInstallation::sole()->user_ip)->toBe('127.0.0.1');
+});
+
+test('after entering the key the owner can step back and restart', function () {
+    installHotel();
+    startFreshInstallation();
+
+    $this->post(route('installation.start-installation'), ['installation_key' => 'test-install-key'])
+        ->assertRedirect(route('installation.show-step', 1));
+    $this->post(route('installation.save-step'), ['hotel_name' => 'Testaria'])
+        ->assertRedirect(route('installation.show-step', 2));
+    $this->post(route('installation.previous-step'))
+        ->assertRedirect(route('installation.show-step', 1));
+    $this->post(route('installation.restart'))
+        ->assertRedirect(route('installation.index'));
+
+    $installation = WebsiteInstallation::first();
+    expect($installation->step)->toBe(0)
+        ->and($installation->installation_key)->not->toBe('test-install-key')
+        ->and($installation->user_ip)->toBeNull();
+});
