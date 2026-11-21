@@ -37,6 +37,15 @@
                         </button>
                     </a>
                 @endif
+
+                @if (config('habbo.client.air_enabled'))
+                    <a data-turbolinks="false" href="{{ route('air-client') }}">
+                        <button
+                            class="relative hidden rounded-full bg-white/90 px-6 py-2 text-lg font-semibold text-black transition duration-300 ease-in-out hover:bg-white dark:bg-gray-900 dark:text-white md:block">
+                            {{ __('AIR client') }}
+                        </button>
+                    </a>
+                @endif
             </flex>
         </div>
     @endauth

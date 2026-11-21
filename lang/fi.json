@@ -114,6 +114,8 @@
     "Session logs": "Kirjautumiset",
     ":online :hotel online": ":online hahmoa paikalla",
     "Flash client": "Flash",
+    "AIR client": "AIR",
+    "Open AIR client": "Avaa AIR-asiakasohjelma",
     "Ban type:": "Porttikiellon tyyppi:",
     "Ban reason:": "Porttikiellon syy:",
     "Ban expiration:": "Porttikielto umpeutuu:",

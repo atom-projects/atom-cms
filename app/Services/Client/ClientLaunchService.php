@@ -12,4 +12,15 @@ class ClientLaunchService
 
         return $user->ssoTicket();
     }
+
+    /**
+     * Build the link an AIR launcher set to this hotel's domain uses to log in with the ticket.
+     */
+    public function airUrl(string $sso): string
+    {
+        return 'habbo://hab?' . http_build_query([
+            'server' => parse_url((string) config('app.url'), PHP_URL_HOST),
+            'token' => $sso,
+        ], '', '&', PHP_QUERY_RFC3986);
+    }
 }

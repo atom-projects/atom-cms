@@ -27,8 +27,7 @@ class ToolController extends Controller
         $sso = $client->ticket(AuthenticatedUser::from($request), $request->ip() ?: 'unknown');
         $data = ['client' => $type, 'sso' => $sso];
         if ($type === 'air') {
-            // An AIR launcher set to this hotel's domain takes the ticket from this link.
-            $data['url'] = 'habbo://hab?' . http_build_query(['server' => parse_url((string) config('app.url'), PHP_URL_HOST), 'token' => $sso], '', '&', PHP_QUERY_RFC3986);
+            $data['url'] = $client->airUrl($sso);
         } elseif ($type === 'nitro') {
             $data['url'] = rtrim(url((string) setting('nitro_path', config('habbo.client.nitro_path'))), '/') . '/index.html?sso=' . rawurlencode($sso);
         } else {
