@@ -3,6 +3,7 @@
 use App\Http\Controllers\Articles\ArticleController;
 use App\Http\Controllers\Articles\WebsiteArticleCommentsController;
 use App\Http\Controllers\Badge\BadgeController;
+use App\Http\Controllers\Client\AirClientController;
 use App\Http\Controllers\Client\ClientController;
 use App\Http\Controllers\Community\LeaderboardController;
 use App\Http\Controllers\Community\PhotosController;
@@ -211,6 +212,7 @@ Route::middleware(['maintenance', 'check.ban', 'force.staff.2fa'])->group(functi
         Route::prefix('game')->middleware(['findretros.redirect', 'vpn.checker'])->group(function () {
             Route::get('/nitro', ClientController::class)->name('nitro-client')->defaults('client', 'nitro');
             Route::get('/flash', ClientController::class)->name('flash-client')->defaults('client', 'flash');
+            Route::get('/air', AirClientController::class)->name('air-client')->middleware('throttle:10,1');
         });
 
         // Logo generator
