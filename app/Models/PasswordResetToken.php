@@ -3,14 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
 
 /**
  * @property string $email
  * @property string $token
  * @property Carbon $created_at
- * @property-read User|null $user
  *
  * @method static \Illuminate\Database\Eloquent\Builder<static>|PasswordResetToken newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|PasswordResetToken newQuery()
@@ -59,9 +57,13 @@ class PasswordResetToken extends Model
             ->isPast();
     }
 
-    /** @return BelongsTo<User, $this> */
-    public function user(): BelongsTo
+    /**
+     * The account whose stored address is this token's address byte for byte,
+     * since the mail column's collation may also match look-alike addresses.
+     */
+    public function owner(): ?User
     {
-        return $this->belongsTo(User::class, 'email', 'mail');
+        return User::where('mail', $this->email)->get()
+            ->first(fn (User $user): bool => $user->mail === $this->email);
     }
 }

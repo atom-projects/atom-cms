@@ -24,17 +24,19 @@ class ForgotPasswordController extends Controller
 
     public function submitForgetPassword(ForgotPasswordRequest $request): RedirectResponse|JsonResponse
     {
+        $user = $this->accountFor($request->string('mail')->value());
+
         // Do not reveal whether the email exists, to prevent account enumeration.
-        if (User::where('mail', $request->mail)->exists()) {
+        if ($user !== null) {
             $token = Str::uuid()->toString();
 
-            PasswordResetToken::where('email', $request->mail)->delete();
+            PasswordResetToken::where('email', $user->mail)->delete();
             PasswordResetToken::create([
-                'email' => $request->mail,
+                'email' => $user->mail,
                 'token' => PasswordResetToken::hashToken($token),
             ]);
 
-            Mail::to($request->mail)->queue(new ResetPasswordMail($token));
+            Mail::to($user->mail)->queue(new ResetPasswordMail($token));
         }
 
         if ($request->expectsJson()) {
@@ -56,8 +58,9 @@ class ForgotPasswordController extends Controller
     public function submitResetPassword(ResetPasswordRequest $request, string $token): RedirectResponse|JsonResponse
     {
         $prt = $this->validToken($token);
+        $owner = $prt?->owner();
 
-        if ($prt === null || $prt->user === null) {
+        if ($prt === null || $owner === null) {
             $prt?->delete();
 
             if ($request->expectsJson()) {
@@ -67,7 +70,7 @@ class ForgotPasswordController extends Controller
             return $this->expired();
         }
 
-        $prt->user->changePassword($request->password);
+        $owner->changePassword($request->password);
         $prt->delete();
 
         if ($request->expectsJson()) {
@@ -75,6 +78,18 @@ class ForgotPasswordController extends Controller
         }
 
         return redirect(app(FrontendUrls::class)->route('login'))->with('success', __('Your password has been successfully reset!'));
+    }
+
+    /**
+     * The mail column's collation may ignore case and accents, so the account with
+     * the exact address wins, and several loose matches without one find nobody.
+     */
+    private function accountFor(string $mail): ?User
+    {
+        $matches = User::where('mail', $mail)->get();
+
+        return $matches->first(fn (User $user): bool => $user->mail === $mail)
+            ?? ($matches->containsOneItem() ? $matches->first() : null);
     }
 
     private function validToken(string $token): ?PasswordResetToken
