@@ -11,6 +11,7 @@ use App\Exceptions\ShopPurchaseException;
 use App\Models\Shop\WebsiteShopItem;
 use App\Models\Shop\WebsiteShopPackage;
 use App\Models\User;
+use App\Support\PermissionRanks;
 use RuntimeException;
 
 final readonly class FulfillPackage
@@ -98,6 +99,14 @@ final readonly class FulfillPackage
     private function giveRank(User $user, WebsiteShopItem $item): void
     {
         $rank = $this->positiveInteger($item, $item->type_value);
+
+        if ($rank >= PermissionRanks::lowestStaffRank()) {
+            throw self::misconfigured($item);
+        }
+
+        if ($user->rank >= $rank) {
+            throw new ShopPurchaseException(__('The account that receives this package already has this rank or a higher one'));
+        }
 
         $user->forceFill(['rank' => $rank])->save();
     }

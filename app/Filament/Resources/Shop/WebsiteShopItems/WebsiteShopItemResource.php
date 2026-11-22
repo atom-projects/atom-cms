@@ -2,8 +2,11 @@
 
 namespace App\Filament\Resources\Shop\WebsiteShopItems;
 
+use App\Emulator\Contracts\RankRepository;
+use App\Enums\ShopItemType;
 use App\Filament\Concerns\TranslatableResource;
 use App\Models\Shop\WebsiteShopItem;
+use App\Support\PermissionRanks;
 use BackedEnum;
 use Filament\Actions;
 use Filament\Forms\Components\FileUpload;
@@ -13,11 +16,14 @@ use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Component;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables;
 use Filament\Tables\Columns\Column;
 use Filament\Tables\Table;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\In;
 
 class WebsiteShopItemResource extends Resource
 {
@@ -58,7 +64,12 @@ class WebsiteShopItemResource extends Resource
             TextInput::make('type_value')
                 ->required()
                 ->maxLength(255)
-                ->helperText('Currency: type:amount (e.g. credits:100). Furniture: item_id. Badge: badge_code. Rank: rank_id.'),
+                ->rule(
+                    fn (): In => Rule::in(array_keys(app(RankRepository::class)->optionsBelow(PermissionRanks::lowestStaffRank()))),
+                    fn (Get $get): bool => $get('type') === ShopItemType::Rank->value,
+                )
+                ->validationMessages(['in' => 'A rank item must use an existing rank below the staff rank.'])
+                ->helperText('Currency: type:amount (e.g. credits:100). Furniture: item_id. Badge: badge_code. Rank: rank_id below the staff rank.'),
 
             FileUpload::make('image')
                 ->image()

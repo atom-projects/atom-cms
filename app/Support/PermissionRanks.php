@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Emulator\Contracts\RankRepository;
+use App\Services\HousekeepingPermissionsService;
 use Throwable;
 
 /**
@@ -20,6 +21,18 @@ final class PermissionRanks
      * has not defined ranks above it does not hand them to ordinary players.
      */
     public const STAFF_RANK = 6;
+
+    /**
+     * The lowest rank that counts as staff: the staff rank setting, or the
+     * housekeeping access rank when that is lower.
+     */
+    public static function lowestStaffRank(): int
+    {
+        $staffRank = (int) setting('min_staff_rank', self::STAFF_RANK);
+        $housekeepingRank = app(HousekeepingPermissionsService::class)->minRank('can_access_housekeeping');
+
+        return $housekeepingRank === null ? $staffRank : min($staffRank, $housekeepingRank);
+    }
 
     public static function scale(int $rank): int
     {
