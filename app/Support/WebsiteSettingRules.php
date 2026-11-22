@@ -146,7 +146,8 @@ final class WebsiteSettingRules
     /**
      * Log that a stored value fails its rule, so the operator can find the
      * cause. Each key logs at most once every ten minutes, and always when
-     * the cache store fails.
+     * the cache store fails. The value is logged without the user name and
+     * password of a URL, and JSON-encoded so it cannot start a new log line.
      */
     public static function reportRefused(string $key, string $value): void
     {
@@ -154,10 +155,12 @@ final class WebsiteSettingRules
             return;
         }
 
+        $withoutUserInfo = preg_replace('~^((?:[a-z][a-z\d+.\-]*:)?//)[^/?#]*@~i', '$1***@', $value);
+
         Log::error(sprintf(
-            'Atom refused the stored %s setting "%s". %s APP_URL is %s.',
+            'Atom refused the stored %s setting %s. %s APP_URL is %s.',
             $key,
-            $value,
+            json_encode($withoutUserInfo, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE),
             self::message($key),
             (string) config('app.url'),
         ));
