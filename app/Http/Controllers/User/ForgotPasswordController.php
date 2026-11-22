@@ -30,7 +30,9 @@ class ForgotPasswordController extends Controller
         if ($user !== null) {
             $token = Str::uuid()->toString();
 
-            PasswordResetToken::where('email', $user->mail)->delete();
+            PasswordResetToken::where('email', $user->mail)->get()
+                ->filter(fn (PasswordResetToken $row): bool => $row->email === $user->mail)
+                ->each->delete();
             PasswordResetToken::create([
                 'email' => $user->mail,
                 'token' => PasswordResetToken::hashToken($token),
