@@ -19,7 +19,7 @@ final class WebsiteSettingRules
 {
     public const SENSITIVE_PERMISSION = 'manage_sensitive_website_settings';
 
-    public const SENSITIVE_PERMISSION_SKIPPED = 'Atom could not read the top rank from the emulator, so it did not create the manage_sensitive_website_settings permission. Until you add it, nobody can change the client, file path, RCON, housekeeping link and staff two-factor settings. Add it in Housekeeping > Housekeeping permissions with your top rank.';
+    public const SENSITIVE_PERMISSION_SKIPPED = 'Atom could not read the top rank from the emulator, so it did not create the manage_sensitive_website_settings permission. Until you add it, nobody can change the client, file path, RCON, housekeeping link and staff two-factor settings. When Atom can read the emulator ranks, run php artisan db:seed --class=HousekeepingPermissionSeeder --force to add it for your top rank.';
 
     /** @var array<string, WebsiteSettingFormat> */
     private const FORMATS = [
