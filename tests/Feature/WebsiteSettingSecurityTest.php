@@ -345,10 +345,12 @@ test('the installer refuses a bad value for a setting on its step', function () 
     $step = intdiv((int) array_search('nitro_path', $keys, true), $chunkSize) + 1;
     $before = settingRecord('nitro_path')->value;
 
-    WebsiteInstallation::query()->first()->update(['step' => $step, 'completed' => false, 'installation_key' => 'test-install-key', 'user_ip' => '127.0.0.1']);
+    WebsiteInstallation::query()->first()->update(['completed' => false, 'installation_key' => 'test-install-key', 'user_ip' => '127.0.0.1']);
     Cache::flush();
     app()->forgetInstance(InstallationService::class);
     app()->forgetInstance(SettingsService::class);
+    $this->post(route('installation.start-installation'), ['installation_key' => 'test-install-key']);
+    WebsiteInstallation::query()->first()->update(['step' => $step]);
 
     $this->post(route('installation.save-step'), ['nitro_path' => 'https://attacker.example/c'])
         ->assertSessionHasErrors('nitro_path');
