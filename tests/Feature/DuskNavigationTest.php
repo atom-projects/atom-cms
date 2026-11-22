@@ -110,7 +110,7 @@ test('Dusk renders personal destinations and one CSRF protected logout form when
 test('Dusk shows ticket and housekeeping shortcuts independently', function (bool $tickets, bool $housekeeping) {
     installHotel();
     setSetting('theme', 'dusk');
-    setSetting('housekeeping_url', 'https://housekeeping.example.test/admin');
+    setSetting('housekeeping_url', '/housekeeping/admin');
 
     foreach (['manage_website_tickets' => $tickets, 'housekeeping_access' => $housekeeping] as $permission => $allowed) {
         WebsitePermission::query()->where('permission', $permission)->update(['min_rank' => $allowed ? 1 : 7]);
@@ -122,14 +122,14 @@ test('Dusk shows ticket and housekeeping shortcuts independently', function (boo
     $response = $this->actingAs($user)->get(route('settings.account.show'))->assertOk();
     $document = duskNavigationDocument($response->getContent());
     $ticketLinks = $document->query('//a[@href="' . route('help-center.ticket.index') . '"]');
-    $housekeepingLinks = $document->query('//a[@href="https://housekeeping.example.test/admin"]');
+    $housekeepingLinks = $document->query('//a[@href="/housekeeping/admin"]');
 
     expect($ticketLinks)->toHaveCount($tickets ? 1 : 0);
     expect($housekeepingLinks)->toHaveCount($housekeeping ? 1 : 0);
     expect($document->query('//nav//a[@href="' . route('help-center.ticket.index') . '"]'))->toHaveCount(0);
 
     expect($document->query('//div[contains(@class, "sub-header")]//a[@href="' . route('help-center.ticket.index') . '" and @aria-label="' . __('Open tickets') . '"]'))->toHaveCount($tickets ? 1 : 0);
-    expect($document->query('//a[@href="' . route('help-center.ticket.index') . '"]/following-sibling::*[1][self::a[@href="https://housekeeping.example.test/admin"]]'))->toHaveCount($tickets && $housekeeping ? 1 : 0);
+    expect($document->query('//a[@href="' . route('help-center.ticket.index') . '"]/following-sibling::*[1][self::a[@href="/housekeeping/admin"]]'))->toHaveCount($tickets && $housekeeping ? 1 : 0);
 })->with([
     'neither permission' => [false, false],
     'tickets only' => [true, false],

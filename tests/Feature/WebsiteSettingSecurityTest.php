@@ -1,20 +1,29 @@
 <?php
 
+use App\Emulator\Contracts\RankRepository;
 use App\Filament\Resources\Atom\CmsSettings\Pages\ManageCmsSettings;
+use App\Filament\Resources\Hotel\BadgeTextEditors\Pages\ListBadgeTextEditors;
 use App\Models\Miscellaneous\WebsiteInstallation;
 use App\Models\Miscellaneous\WebsiteSetting;
 use App\Models\User;
+use App\Models\WebsiteAd;
 use App\Models\WebsiteHousekeepingPermission;
+use App\Services\Badge\BadgeImageStorage;
 use App\Services\Badge\FlashExternalTexts;
+use App\Services\Client\ClientLaunchService;
 use App\Services\HousekeepingPermissionsService;
 use App\Services\InstallationService;
 use App\Services\SettingsService;
 use App\Support\PermissionRanks;
+use Database\Seeders\HousekeepingPermissionSeeder;
 use Database\Seeders\WebsiteSettingsSeeder;
 use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 
 const SENSITIVE_SETTINGS_PERMISSION = 'manage_sensitive_website_settings';
@@ -27,7 +36,7 @@ function settingsStaff(int $rank): User
 {
     installHotel();
 
-    foreach (['can_access_housekeeping' => 6, 'manage_website_settings' => 6, 'delete_website_settings' => 6, SENSITIVE_SETTINGS_PERMISSION => 7] as $permission => $minRank) {
+    foreach (['can_access_housekeeping' => 6, 'manage_website_settings' => 6, 'delete_website_settings' => 6, 'manage_badges' => 6, SENSITIVE_SETTINGS_PERMISSION => 7] as $permission => $minRank) {
         WebsiteHousekeepingPermission::query()->updateOrCreate(
             ['permission' => $permission],
             ['min_rank' => $minRank, 'description' => "Testing {$permission}"],
@@ -69,6 +78,27 @@ function outsideHotelFile(): string
     file_put_contents($path, "landing.view.me=Welcome back\n");
 
     return $path;
+}
+
+function outsideHotelFolder(): string
+{
+    $folder = storage_path('framework/outside-hotel-folder');
+    File::ensureDirectoryExists($folder);
+    File::cleanDirectory($folder);
+
+    return $folder;
+}
+
+function badgeGif(): string
+{
+    $image = imagecreatetruecolor(40, 40);
+
+    ob_start();
+    imagegif($image);
+    $bytes = (string) ob_get_clean();
+    imagedestroy($image);
+
+    return $bytes;
 }
 
 test('a nitro path on another origin is refused when saved', function (string $value) {
@@ -188,8 +218,6 @@ test('a link setting must be a site path or an https url', function (string $key
 
     expect(settingRecord($key)->value)->toBe($before);
 })->with([
-    'housekeeping script' => ['housekeeping_url', 'javascript:alert(document.cookie)'],
-    'housekeeping plain http' => ['housekeeping_url', 'http://phish.example/housekeeping'],
     'discord script' => ['discord_invitation_link', 'javascript:alert(1)'],
     'discord data url' => ['discord_invitation_link', 'data:text/html,<script>alert(1)</script>'],
     'logo breaking out of the attribute' => ['cms_logo', '/logo.png" onerror="alert(1)'],
@@ -203,8 +231,7 @@ test('a link setting accepts site paths and https urls', function (string $key, 
 
     expect(settingRecord($key)->value)->toBe($value);
 })->with([
-    ['housekeeping_url', '/housekeeping'],
-    ['housekeeping_url', 'https://housekeeping.example.test/admin'],
+    ['cms_logo', '/assets/images/logo.png'],
     ['discord_invitation_link', 'https://discord.gg/rX3aShUHdg'],
     ['avatar_imager', 'https://www.habbo.com/habbo-imaging/avatarimage?figure='],
 ]);
@@ -229,6 +256,7 @@ test('the lowest staff rank cannot change a sensitive setting', function (string
     'rcon port' => 'rcon_port',
     'forced two-factor' => 'force_staff_2fa',
     'staff rank' => 'min_staff_rank',
+    'housekeeping link' => 'housekeeping_url',
 ]);
 
 test('the lowest staff rank can still change ordinary settings', function () {
@@ -353,3 +381,190 @@ test('existing hotels receive the sensitive settings permission for the top rank
     expect($permission)->not->toBeNull()
         ->and($permission->min_rank)->toBe(PermissionRanks::ceiling());
 });
+
+test('a custom theme whose client view still uses the ticket variable keeps working', function () {
+    installHotel();
+    $base = storage_path('framework/testing/themes');
+    File::ensureDirectoryExists($base . '/legacy/views/client');
+    File::put($base . '/legacy/views/client/nitro.blade.php', '<iframe id="nitro" src="{{ setting(\'nitro_path\') }}/index.html?sso={{ $sso }}"></iframe>');
+    config(['theme.base_path' => $base]);
+    setSetting('theme', 'legacy');
+    $player = User::factory()->create();
+
+    $this->actingAs($player)
+        ->get(route('nitro-client'))
+        ->assertOk()
+        ->assertSee('/index.html?sso=' . $player->fresh()->auth_ticket);
+
+    File::deleteDirectory($base);
+});
+
+test('a headless hotel may serve the client from its frontend host', function () {
+    settingsStaff(7);
+    config(['atom.frontend_url' => 'https://hotel.example.test']);
+
+    editSetting('nitro_path', 'https://hotel.example.test/client')->assertHasNoActionErrors();
+
+    config(['atom.mode' => 'headless']);
+    setSetting('findretros_enabled', '0');
+
+    $this->actingAs(User::factory()->create())
+        ->postJson('/api/v1/client/launch', ['client' => 'nitro'])
+        ->assertOk()
+        ->assertJsonPath('data.url', fn (string $url): bool => str_starts_with($url, 'https://hotel.example.test/client/index.html?sso='));
+});
+
+test('a refused nitro path is logged once with the setting, the value and APP_URL', function () {
+    installHotel();
+    writeSettingDirectly('nitro_path', 'client/nitro');
+    $player = User::factory()->create();
+    Log::spy();
+
+    $launcher = app(ClientLaunchService::class);
+
+    expect($launcher->nitro($player, '127.0.0.1'))->toBeNull()
+        ->and($launcher->nitro($player, '127.0.0.1'))->toBeNull();
+
+    Log::shouldHaveReceived('error')
+        ->once()
+        ->withArgs(fn (string $message): bool => str_contains($message, 'nitro_path')
+            && str_contains($message, '"client/nitro"')
+            && str_contains($message, (string) config('app.url'))
+            && str_contains($message, 'NITRO_ALLOWED_ORIGINS'));
+});
+
+test('HOTEL_FILE_ROOTS adds folders to the built-in roots, so a fresh install still seeds', function () {
+    $_SERVER['HOTEL_FILE_ROOTS'] = $_ENV['HOTEL_FILE_ROOTS'] = '/srv/hotel';
+
+    try {
+        $roots = (require config_path('habbo.php'))['hotel_file_roots'];
+    } finally {
+        unset($_SERVER['HOTEL_FILE_ROOTS'], $_ENV['HOTEL_FILE_ROOTS']);
+    }
+
+    config(['habbo.hotel_file_roots' => $roots]);
+    WebsiteSetting::query()->delete();
+    $this->seed(WebsiteSettingsSeeder::class);
+
+    expect($roots)->toContain('/srv/hotel', '/var/www/gamedata')
+        ->and(settingRecord('badge_path_filesystem')->value)->toBe('/var/www/gamedata/c_images/album1584');
+});
+
+test('a badge folder already in the table outside the roots is never written', function () {
+    installHotel();
+    $outside = outsideHotelFolder();
+    writeSettingDirectly('badge_path_filesystem', $outside);
+    setSetting('drawbadge_currency_value', '150');
+    setSetting('drawbadge_currency_type', 'credits');
+    $player = User::factory()->create(['credits' => 1000]);
+    Log::spy();
+
+    $this->actingAs($player)->get(route('draw-badge'))->assertOk();
+
+    $this->actingAs($player)
+        ->post(route('badge.buy'), [
+            'badge_data' => 'data:image/gif;base64,' . base64_encode(badgeGif()),
+            'badge_name' => 'My Badge',
+            'badge_description' => 'A hand drawn badge',
+        ])
+        ->assertJson(['success' => false]);
+
+    expect(fn () => app(BadgeImageStorage::class)->store('EVIL01', badgeGif()))->toThrow(Exception::class)
+        ->and(File::files($outside))->toBeEmpty()
+        ->and((int) $player->refresh()->credits)->toBe(1000);
+
+    Log::shouldHaveReceived('error')
+        ->withArgs(fn (string $message): bool => str_contains($message, 'badge_path_filesystem') && str_contains($message, $outside));
+});
+
+test('an ads folder already in the table outside the roots is never read, written or deleted from', function () {
+    installHotel();
+    $outside = outsideHotelFolder();
+    File::put($outside . '/victim.png', 'keep');
+    writeSettingDirectly('ads_path_filesystem', $outside);
+
+    $this->get(route('welcome'))->assertOk();
+
+    WebsiteAd::query()->create(['image' => 'victim.png'])->delete();
+
+    expect(fn () => Storage::disk('ads')->put('planted.png', 'x'))->toThrow(Exception::class);
+
+    $this->artisan('import:ads-data')->assertFailed();
+
+    expect(File::exists($outside . '/victim.png'))->toBeTrue()
+        ->and(File::exists($outside . '/planted.png'))->toBeFalse()
+        ->and(WebsiteAd::query()->count())->toBe(0);
+});
+
+test('a nitro texts file already in the table outside the roots is never exported, copied or imported', function () {
+    settingsStaff(7);
+    $outside = outsideHotelFolder() . '/ExternalTexts.json';
+    File::put($outside, '{"badge_name_OLD":"Old"}');
+    writeSettingDirectly('nitro_external_texts_file', $outside);
+    Log::spy();
+
+    Livewire::test(ListBadgeTextEditors::class)
+        ->callAction('export')
+        ->callAction('backup');
+
+    $this->artisan('import:badge-data')->assertFailed();
+
+    expect(File::get($outside))->toBe('{"badge_name_OLD":"Old"}')
+        ->and(File::files(dirname($outside)))->toHaveCount(1);
+
+    Log::shouldHaveReceived('error')
+        ->withArgs(fn (string $message): bool => str_contains($message, 'nitro_external_texts_file') && str_contains($message, $outside));
+});
+
+test('the housekeeping link must stay on this site', function (string $value) {
+    settingsStaff(7);
+    $before = settingRecord('housekeeping_url')->value;
+
+    editSetting('housekeeping_url', $value)->assertHasActionErrors(['value']);
+
+    expect(settingRecord('housekeeping_url')->value)->toBe($before);
+})->with([
+    'outside login page' => 'https://login.attacker.example/housekeeping',
+    'script' => 'javascript:alert(document.cookie)',
+    'plain http' => 'http://phish.example/housekeeping',
+]);
+
+test('the housekeeping link accepts a path or a url on this site', function (string $value) {
+    settingsStaff(7);
+
+    editSetting('housekeeping_url', $value)->assertHasNoActionErrors();
+
+    expect(settingRecord('housekeeping_url')->value)->toBe($value);
+})->with([
+    'site path' => '/housekeeping',
+    'app url' => fn () => rtrim((string) config('app.url'), '/') . '/housekeeping',
+]);
+
+test('a missing sensitive settings permission denies everyone', function () {
+    $owner = settingsStaff(7);
+    WebsiteHousekeepingPermission::query()->where('permission', SENSITIVE_SETTINGS_PERMISSION)->delete();
+    app(HousekeepingPermissionsService::class)->refresh();
+
+    expect($owner->can('update', settingRecord('nitro_path')))->toBeFalse()
+        ->and($owner->can('update', settingRecord('hotel_name')))->toBeTrue();
+});
+
+test('the sensitive settings permission is not created with a guessed rank', function () {
+    WebsiteHousekeepingPermission::query()->where('permission', SENSITIVE_SETTINGS_PERMISSION)->delete();
+    $this->mock(RankRepository::class, fn ($mock) => $mock->shouldReceive('highestRank')->andThrow(new RuntimeException('No emulator schema.')));
+
+    (require database_path('migrations/2026_11_22_000000_add_sensitive_website_settings_permission.php'))->up();
+    $this->seed(HousekeepingPermissionSeeder::class);
+
+    expect(WebsiteHousekeepingPermission::query()->where('permission', SENSITIVE_SETTINGS_PERMISSION)->exists())->toBeFalse()
+        ->and(WebsiteHousekeepingPermission::query()->where('permission', 'manage_website_settings')->exists())->toBeTrue();
+});
+
+test('a drive-letter path is refused on a server that is not Windows', function () {
+    settingsStaff(7);
+    $before = settingRecord('nitro_external_texts_file')->value;
+
+    editSetting('nitro_external_texts_file', 'C:/Hotel/hotel-files/x.php')->assertHasActionErrors(['value']);
+
+    expect(settingRecord('nitro_external_texts_file')->value)->toBe($before);
+})->skipOnWindows();
