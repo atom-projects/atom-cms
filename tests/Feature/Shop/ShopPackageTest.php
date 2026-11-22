@@ -201,6 +201,57 @@ test('invalid item numbers reject the purchase and roll back earlier rewards', f
     'currency multiplication overflow' => ['currency', 'credits:' . PHP_INT_MAX, 2],
 ]);
 
+function attachRankItem(WebsiteShopPackage $package, string $rank): void
+{
+    $item = WebsiteShopItem::create([
+        'name' => "Rank {$rank}",
+        'type' => 'rank',
+        'type_value' => $rank,
+        'is_active' => true,
+    ]);
+
+    $package->items()->attach($item->id, ['quantity' => 1]);
+}
+
+test('a rank package is refused before payment when the receiver already has that rank or higher', function (int $buyerRank, ?int $receiverRank) {
+    installHotel();
+
+    $buyer = User::factory()->create(['website_balance' => 10000, 'rank' => $buyerRank]);
+    $receiver = $receiverRank === null ? $buyer : User::factory()->create(['rank' => $receiverRank]);
+    $package = makePackage(['is_giftable' => true]);
+    attachRankItem($package, '2');
+    $credits = (int) $receiver->credits;
+    $rank = (int) $receiver->rank;
+
+    $this->actingAs($buyer)
+        ->post(route('shop.buy-package', $package), $receiver->is($buyer) ? [] : ['receiver' => $receiver->username])
+        ->assertSessionHasErrors(['message' => 'The account that receives this package already has this rank or a higher one']);
+
+    expect((int) $buyer->refresh()->website_balance)->toBe(10000)
+        ->and((int) $receiver->refresh()->rank)->toBe($rank)
+        ->and((int) $receiver->credits)->toBe($credits)
+        ->and(WebsiteShopPurchase::count())->toBe(0);
+})->with([
+    'a gift to an administrator' => [1, 7],
+    'a gift to a player with the same rank' => [1, 2],
+    'staff buying for themselves' => [6, null],
+]);
+
+test('a rank package with a staff rank is refused before payment', function () {
+    installHotel();
+
+    $buyer = User::factory()->create(['website_balance' => 10000, 'rank' => 1]);
+    $package = makePackage(['price' => 0]);
+    attachRankItem($package, '7');
+
+    $this->actingAs($buyer)
+        ->post(route('shop.buy-package', $package))
+        ->assertSessionHasErrors(['message' => 'This package is currently unavailable']);
+
+    expect((int) $buyer->refresh()->rank)->toBe(1)
+        ->and(WebsiteShopPurchase::count())->toBe(0);
+});
+
 test('an online recipient is disconnected before atomic delivery', function () {
     installHotel();
 
