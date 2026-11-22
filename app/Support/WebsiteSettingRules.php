@@ -277,7 +277,8 @@ final class WebsiteSettingRules
 
     /**
      * Resolve symbolic links in the part of the path that exists, so a link
-     * inside a root cannot point outside it. Missing parts are kept as written.
+     * inside a root cannot point outside it. Missing parts, and parts that
+     * open_basedir hides, are kept as written.
      */
     private static function resolve(string $path): string
     {
@@ -285,7 +286,7 @@ final class WebsiteSettingRules
         $existing = $normalized;
         $missing = [];
 
-        while (($real = realpath($existing === '' ? '/' : $existing)) === false) {
+        while (($real = @realpath($existing === '' ? '/' : $existing)) === false) {
             $parent = dirname($existing);
 
             if ($parent === $existing || $parent === '.') {
