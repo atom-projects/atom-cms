@@ -47,7 +47,13 @@ class SendRegisteredUserWebhook implements ShouldQueue
                 ->asJson()
                 ->post($url, [
                     'username' => sprintf('%s Bot', setting('hotel_name')),
-                    'content' => "User: {$this->username} has just registered, with the IP: {$this->ip} and E-mail: {$this->email}",
+                    'content' => sprintf(
+                        'User: %s has just registered, with the IP: %s and E-mail: %s',
+                        $this->inlineCode($this->username),
+                        $this->inlineCode($this->ip),
+                        $this->inlineCode($this->email),
+                    ),
+                    'allowed_mentions' => ['parse' => []],
                 ]);
         } catch (Throwable $exception) {
             Log::warning('Discord registration webhook delivery failed.', [
@@ -64,5 +70,11 @@ class SendRegisteredUserWebhook implements ShouldQueue
 
             throw new RuntimeException('Discord registration webhook delivery failed.');
         }
+    }
+
+    /** Discord renders nothing inside a code span, so visitor text cannot format, link or mention. */
+    private function inlineCode(string $value): string
+    {
+        return '`' . str_replace('`', '', $value) . '`';
     }
 }
