@@ -26,11 +26,12 @@ Change these in Housekeeping, under CMS settings. Your theme and emulator decide
 Atom refuses to save a value that does not fit its setting:
 
 - `nitro_path` must be a path on this site, such as `/client/nitro`, or a URL on `APP_URL`, `ATOM_FRONTEND_URL` or an origin in `NITRO_ALLOWED_ORIGINS`. Atom also checks it before it opens the client. With another value, the client page returns 503 and no login ticket is sent.
-- Links and images (`housekeeping_url`, `discord_invitation_link`, `avatar_imager`, `cms_logo`, `cms_header`, `cms_me_backdrop`, `badges_path`, `group_badge_path`, `room_thumbnail_path`, `furniture_icons_path`, `catalog_icons_path`, `ads_picture_path`) must be a path on this site, an `https://` URL, or a URL on `APP_URL`.
+- `housekeeping_url` must be a path on this site, such as `/housekeeping`, or a URL on `APP_URL`.
+- Links and images (`discord_invitation_link`, `avatar_imager`, `cms_logo`, `cms_header`, `cms_me_backdrop`, `badges_path`, `group_badge_path`, `room_thumbnail_path`, `furniture_icons_path`, `catalog_icons_path`, `ads_picture_path`) must be a path on this site, an `https://` URL, or a URL on `APP_URL`.
 - File and folder paths (`flash_external_texts_file`, `nitro_external_texts_file`, `badge_path_filesystem`, `ads_path_filesystem`) must be absolute and inside an allowed folder. Atom always allows `/var/www/gamedata`, `/var/www/hotel/hotel-files` and `C:\Hotel\hotel-files`. Add other folders as additional roots in `HOTEL_FILE_ROOTS`, comma separated. Atom does not read, write or delete files through a stored path outside these folders. It writes the refused value to `storage/logs/laravel.log`, and the badge or ads folder stays off until you fix the setting.
 - `theme` must be an installed theme. `rcon_ip` must be an IP address or a host name, and `rcon_port` a port from 1 to 65535.
 - On and off settings, such as `force_staff_2fa` and `maintenance_enabled`, must be `0` or `1`. Rank settings, such as `min_staff_rank`, must be 1 or higher. `max_accounts_per_ip` must be 0 or more.
 
-Only staff with the housekeeping permission `manage_sensitive_website_settings` can change `nitro_path`, the file and folder paths, `rcon_ip`, `rcon_port`, `force_staff_2fa` and `min_staff_rank`. New and existing hotels get this permission for the highest rank only.
+Only staff with the housekeeping permission `manage_sensitive_website_settings` can change `nitro_path`, `housekeeping_url`, the file and folder paths, `rcon_ip`, `rcon_port`, `force_staff_2fa` and `min_staff_rank`. New and existing hotels get this permission for the highest rank only.
 
 Every row in `website_settings` has a comment that explains it. If you edit the table by hand, see [changing settings](README.md#changing-settings).

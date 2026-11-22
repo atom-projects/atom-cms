@@ -13,6 +13,9 @@ enum WebsiteSettingFormat
     /** Rendered as an href, src or CSS url(). */
     case Link;
 
+    /** A link staff follow to log in, so it must stay on this site. */
+    case SiteLink;
+
     /** A file Atom reads and writes; empty turns the feature off. */
     case HotelFile;
 

@@ -21,7 +21,7 @@ final class WebsiteSettingRules
     /** @var array<string, WebsiteSettingFormat> */
     private const FORMATS = [
         'nitro_path' => WebsiteSettingFormat::ClientUrl,
-        'housekeeping_url' => WebsiteSettingFormat::Link,
+        'housekeeping_url' => WebsiteSettingFormat::SiteLink,
         'discord_invitation_link' => WebsiteSettingFormat::Link,
         'avatar_imager' => WebsiteSettingFormat::Link,
         'cms_logo' => WebsiteSettingFormat::Link,
@@ -55,9 +55,10 @@ final class WebsiteSettingRules
         'max_accounts_per_ip' => WebsiteSettingFormat::Count,
     ];
 
-    /** Keys that decide where tickets, files and RCON commands go, and who must use two-factor. */
+    /** Keys that decide where tickets, files, RCON commands and the staff login link go, and who must use two-factor. */
     private const SENSITIVE = [
         'nitro_path',
+        'housekeeping_url',
         'flash_external_texts_file',
         'nitro_external_texts_file',
         'badge_path_filesystem',
@@ -85,6 +86,7 @@ final class WebsiteSettingRules
             null => true,
             WebsiteSettingFormat::ClientUrl => self::isSitePath($value) || in_array(self::origin($value), self::clientOrigins(), true),
             WebsiteSettingFormat::Link => $value === '' || self::isSitePath($value) || self::isPublicUrl($value),
+            WebsiteSettingFormat::SiteLink => $value === '' || self::isSitePath($value) || self::isOnAppUrl($value),
             WebsiteSettingFormat::HotelFile => $value === '' || self::isInsideHotelFileRoots($value),
             WebsiteSettingFormat::HotelFolder => self::isInsideHotelFileRoots($value),
             WebsiteSettingFormat::Theme => in_array($value, self::themes(), true),
@@ -185,6 +187,7 @@ final class WebsiteSettingRules
         return match (self::FORMATS[$key] ?? null) {
             WebsiteSettingFormat::ClientUrl => 'Use a path on this site, such as /client/nitro, or a URL on APP_URL, ATOM_FRONTEND_URL or an origin listed in NITRO_ALLOWED_ORIGINS.',
             WebsiteSettingFormat::Link => 'Use a path on this site, such as /assets/images/logo.png, or an https:// URL.',
+            WebsiteSettingFormat::SiteLink => 'Use a path on this site, such as /housekeeping, or a URL on APP_URL.',
             WebsiteSettingFormat::HotelFile, WebsiteSettingFormat::HotelFolder => 'Use an absolute path inside one of these folders (HOTEL_FILE_ROOTS): ' . implode(', ', self::hotelFileRoots()) . '.',
             WebsiteSettingFormat::Theme => 'Use one of the installed themes: ' . implode(', ', self::themes()) . '.',
             WebsiteSettingFormat::Host => 'Use an IP address or a host name.',
@@ -208,9 +211,14 @@ final class WebsiteSettingRules
 
     private static function isPublicUrl(string $value): bool
     {
+        return str_starts_with((string) self::origin($value), 'https://') || self::isOnAppUrl($value);
+    }
+
+    private static function isOnAppUrl(string $value): bool
+    {
         $origin = self::origin($value);
 
-        return $origin !== null && (str_starts_with($origin, 'https://') || $origin === self::origin((string) config('app.url')));
+        return $origin !== null && $origin === self::origin((string) config('app.url'));
     }
 
     /**
