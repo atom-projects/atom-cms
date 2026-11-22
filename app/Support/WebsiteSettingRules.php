@@ -135,6 +135,14 @@ final class WebsiteSettingRules
     }
 
     /**
+     * The stored housekeeping link, or /housekeeping when it is empty or fails its rule.
+     */
+    public static function housekeepingUrl(): string
+    {
+        return (string) setting('housekeeping_url', '/housekeeping');
+    }
+
+    /**
      * Log, at most once per request, that a stored value fails its rule, so
      * the operator can find the cause from the log.
      */
