@@ -38,6 +38,11 @@ class ArcturusRankRepository implements RankRepository
             ->all();
     }
 
+    public function lowestStaffRank(): ?int
+    {
+        return null;
+    }
+
     public function forDisplay(Builder|Relation $query): Builder|Relation
     {
         return $query->select(['id', 'rank_name', 'staff_background']);

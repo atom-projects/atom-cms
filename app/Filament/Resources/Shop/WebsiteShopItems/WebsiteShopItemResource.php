@@ -2,7 +2,6 @@
 
 namespace App\Filament\Resources\Shop\WebsiteShopItems;
 
-use App\Emulator\Contracts\RankRepository;
 use App\Enums\ShopItemType;
 use App\Filament\Concerns\TranslatableResource;
 use App\Models\Shop\WebsiteShopItem;
@@ -65,7 +64,7 @@ class WebsiteShopItemResource extends Resource
                 ->required()
                 ->maxLength(255)
                 ->rule(
-                    fn (): In => Rule::in(array_keys(app(RankRepository::class)->optionsBelow(PermissionRanks::lowestStaffRank()))),
+                    fn (): In => Rule::in(array_keys(PermissionRanks::grantableRanks())),
                     fn (Get $get): bool => $get('type') === ShopItemType::Rank->value,
                 )
                 ->validationMessages(['in' => 'A rank item must use an existing rank below the staff rank.'])

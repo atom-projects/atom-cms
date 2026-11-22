@@ -98,9 +98,14 @@ final readonly class FulfillPackage
 
     private function giveRank(User $user, WebsiteShopItem $item): void
     {
+        $user->forceFill(['rank' => $this->applicableRank($user, $item)])->save();
+    }
+
+    private function applicableRank(User $user, WebsiteShopItem $item): int
+    {
         $rank = $this->positiveInteger($item, $item->type_value);
 
-        if ($rank >= PermissionRanks::lowestStaffRank()) {
+        if (! array_key_exists($rank, PermissionRanks::grantableRanks())) {
             throw self::misconfigured($item);
         }
 
@@ -108,7 +113,7 @@ final readonly class FulfillPackage
             throw new ShopPurchaseException(__('The account that receives this package already has this rank or a higher one'));
         }
 
-        $user->forceFill(['rank' => $rank])->save();
+        return $rank;
     }
 
     private function positiveInteger(WebsiteShopItem $item, string $value): int

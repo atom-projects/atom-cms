@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Emulator\Contracts\RankRepository;
 use App\Services\HousekeepingPermissionsService;
+use RuntimeException;
 use Throwable;
 
 /**
@@ -23,15 +24,45 @@ final class PermissionRanks
     public const STAFF_RANK = 6;
 
     /**
-     * The lowest rank that counts as staff: the staff rank setting, or the
-     * housekeeping access rank when that is lower.
+     * The ranks a shop rank item may give: the emulator's ranks below the
+     * lowest staff rank. None when that staff rank cannot be determined.
+     *
+     * @return array<int|string, string>
      */
-    public static function lowestStaffRank(): int
+    public static function grantableRanks(): array
     {
-        $staffRank = (int) setting('min_staff_rank', self::STAFF_RANK);
+        $staffRank = self::lowestStaffRank();
+
+        return $staffRank === null ? [] : app(RankRepository::class)->optionsBelow($staffRank);
+    }
+
+    /**
+     * The lowest of the staff rank setting, the housekeeping access rank and
+     * the emulator's own staff ranks. Null, and reported, when a setting is
+     * broken, so a broken setting never makes a staff rank grantable.
+     */
+    private static function lowestStaffRank(): ?int
+    {
+        $ceiling = self::ceiling();
+        $staffRank = filter_var(setting('min_staff_rank', self::STAFF_RANK), FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => $ceiling]]);
+
+        if ($staffRank === false) {
+            report(new RuntimeException("The min_staff_rank setting must be a whole number from 1 to {$ceiling}."));
+
+            return null;
+        }
+
         $housekeepingRank = app(HousekeepingPermissionsService::class)->minRank('can_access_housekeeping');
 
-        return $housekeepingRank === null ? $staffRank : min($staffRank, $housekeepingRank);
+        if ($housekeepingRank !== null && $housekeepingRank < 1) {
+            report(new RuntimeException('The can_access_housekeeping permission must have a rank of at least 1.'));
+
+            return null;
+        }
+
+        $emulatorRank = app(RankRepository::class)->lowestStaffRank();
+
+        return min($staffRank, $housekeepingRank ?? $staffRank, $emulatorRank ?? $staffRank);
     }
 
     public static function scale(int $rank): int
