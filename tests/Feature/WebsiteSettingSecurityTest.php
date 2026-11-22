@@ -15,6 +15,7 @@ use App\Services\HousekeepingPermissionsService;
 use App\Services\InstallationService;
 use App\Services\SettingsService;
 use App\Support\PermissionRanks;
+use App\Support\WebsiteSettingRules;
 use Database\Seeders\HousekeepingPermissionSeeder;
 use Database\Seeders\WebsiteSettingsSeeder;
 use Filament\Actions\Testing\TestAction;
@@ -23,7 +24,9 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Once;
 use Livewire\Livewire;
 
 const SENSITIVE_SETTINGS_PERMISSION = 'manage_sensitive_website_settings';
@@ -568,3 +571,99 @@ test('a drive-letter path is refused on a server that is not Windows', function 
 
     expect(settingRecord('nitro_external_texts_file')->value)->toBe($before);
 })->skipOnWindows();
+
+test('a folder setting is checked without an error when open_basedir hides the folder', function () {
+    $root = sys_get_temp_dir() . '/atom-open-basedir-' . uniqid();
+    File::ensureDirectoryExists($root . '/badges');
+    File::ensureDirectoryExists($root . '-outside');
+
+    try {
+        $result = Process::env(['APP_ENV' => 'testing'])->timeout(30)->run([
+            PHP_BINARY, '-d', 'open_basedir=' . base_path(), base_path('tests/Fixtures/hotel-folder-under-open-basedir.php'), $root,
+        ]);
+    } finally {
+        File::deleteDirectory($root);
+        File::deleteDirectory($root . '-outside');
+    }
+
+    $output = $result->errorOutput() . $result->output();
+
+    expect($result->successful())->toBeTrue($output)
+        ->and(json_decode(trim($result->output()), true))->toBe(['inside' => true, 'outside' => false], $output);
+});
+
+test('a refused setting is logged once per key, not on every request', function () {
+    Log::spy();
+    $logsAbout = fn (string $key): Closure => fn (string $message): bool => str_contains($message, $key);
+
+    WebsiteSettingRules::reportRefused('badge_path_filesystem', '/srv/outside/badges');
+    Once::flush();
+    WebsiteSettingRules::reportRefused('badge_path_filesystem', '/srv/outside/badges');
+    WebsiteSettingRules::reportRefused('ads_path_filesystem', '/srv/outside/ads');
+
+    Log::shouldHaveReceived('error')->withArgs($logsAbout('badge_path_filesystem'))->once();
+    Log::shouldHaveReceived('error')->withArgs($logsAbout('ads_path_filesystem'))->once();
+
+    $this->travel(11)->minutes();
+    Once::flush();
+    WebsiteSettingRules::reportRefused('badge_path_filesystem', '/srv/outside/badges');
+
+    Log::shouldHaveReceived('error')->withArgs($logsAbout('badge_path_filesystem'))->twice();
+});
+
+test('a refused setting is still logged when the cache store fails', function () {
+    Log::spy();
+    Cache::shouldReceive('add')->andThrow(new RuntimeException('The cache store is down.'));
+
+    WebsiteSettingRules::reportRefused('ads_path_filesystem', '/srv/outside/ads');
+
+    Log::shouldHaveReceived('error')->withArgs(fn (string $message): bool => str_contains($message, 'ads_path_filesystem'));
+});
+
+test('a refused link is logged without its user name and password', function () {
+    Log::spy();
+
+    WebsiteSettingRules::reportRefused('nitro_path', 'https://owner:s3cret@client.attacker.example/nitro');
+
+    Log::shouldHaveReceived('error')
+        ->withArgs(fn (string $message): bool => ! str_contains($message, 'owner')
+            && ! str_contains($message, 's3cret')
+            && str_contains($message, 'https://')
+            && str_contains($message, 'client.attacker.example/nitro'))
+        ->once();
+});
+
+test('a refused value cannot start a new line in the log', function () {
+    $log = storage_path('logs/refused-setting-' . uniqid() . '.log');
+    config(['logging.channels.refused_setting' => ['driver' => 'single', 'path' => $log], 'logging.default' => 'refused_setting']);
+
+    try {
+        WebsiteSettingRules::reportRefused('badge_path_filesystem', "/srv/badges\n[2026-01-01 00:00:00] production.CRITICAL: forged\r\x1b[2J");
+        $contents = File::get($log);
+    } finally {
+        File::delete($log);
+    }
+
+    expect(substr_count($contents, "\n"))->toBe(1)
+        ->and($contents)->not->toMatch('/[\x00-\x09\x0b-\x1f]/')
+        ->and($contents)->toContain('production.CRITICAL: forged');
+});
+
+test('a housekeeping link already in the table outside this site is not shown', function () {
+    installHotel();
+    writeSettingDirectly('housekeeping_url', 'https://login.attacker.example/housekeeping');
+    Log::spy();
+
+    expect(WebsiteSettingRules::housekeepingUrl())->toBe('/housekeeping');
+
+    Log::shouldHaveReceived('error')
+        ->withArgs(fn (string $message): bool => str_contains($message, 'housekeeping_url'))
+        ->once();
+});
+
+test('a housekeeping link on this site is shown as stored', function () {
+    installHotel();
+    writeSettingDirectly('housekeeping_url', '/housekeeping/admin');
+
+    expect(WebsiteSettingRules::housekeepingUrl())->toBe('/housekeeping/admin');
+});
