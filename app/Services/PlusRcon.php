@@ -8,10 +8,15 @@ use App\Enums\CurrencyTypes;
 use App\Exceptions\RconConnectionException;
 use App\Models\User;
 use JsonException;
+use SensitiveParameter;
 
 final readonly class PlusRcon implements Rcon
 {
     private const MAX_FRAME_BYTES = 4096;
+
+    private const INVALID_REQUEST = 'Invalid RCON request.';
+
+    private const MALFORMED_REQUEST = 'Malformed RCON JSON.';
 
     /** @var list<string> */
     private const COMMANDS = [
@@ -22,6 +27,7 @@ final readonly class PlusRcon implements Rcon
     public function __construct(
         private ?string $host = null,
         private ?int $port = null,
+        #[SensitiveParameter] private ?string $secret = null,
     ) {}
 
     public function isConnected(): bool
@@ -49,11 +55,17 @@ final readonly class PlusRcon implements Rcon
             }
         }
 
+        $request = [
+            'command' => $command,
+            'parameters' => array_map(static fn (mixed $parameter): string => (string) $parameter, array_values($parameters)),
+        ];
+        $secret = $this->secret();
+        if ($secret !== '') {
+            $request['secret'] = $secret;
+        }
+
         try {
-            $payload = json_encode([
-                'command' => $command,
-                'parameters' => array_map(static fn (mixed $parameter): string => (string) $parameter, array_values($parameters)),
-            ], JSON_THROW_ON_ERROR) . "\n";
+            $payload = json_encode($request, JSON_THROW_ON_ERROR) . "\n";
         } catch (JsonException $exception) {
             throw new RconConnectionException("Unable to encode Plus RCON command '{$command}'", previous: $exception);
         }
@@ -183,8 +195,13 @@ final readonly class PlusRcon implements Rcon
         return $socket;
     }
 
+    private function secret(): string
+    {
+        return $this->secret ?? (string) (app()->bound('config') ? config('habbo.rcon.secret') : '');
+    }
+
     /** @param resource $socket */
-    private function write($socket, string $payload): void
+    private function write($socket, #[SensitiveParameter] string $payload): void
     {
         for ($written = 0, $length = strlen($payload); $written < $length; $written += $bytes) {
             $bytes = fwrite($socket, substr($payload, $written));
@@ -217,8 +234,16 @@ final readonly class PlusRcon implements Rcon
         }
 
         $response = $this->sendCommand($command, $data);
-        if (! $response->successful()) {
-            throw new RconConnectionException("Plus RCON command '{$command}' was rejected: {$response->message}");
+        if ($response->successful()) {
+            return;
         }
+        if ($response->message === self::INVALID_REQUEST) {
+            throw new RconConnectionException("Plus RCON refused command '{$command}' as invalid. If Rcon:Secret is set in the emulator config, check that RCON_SECRET matches it.");
+        }
+        if ($response->message === self::MALFORMED_REQUEST && $this->secret() !== '') {
+            throw new RconConnectionException("Plus RCON command '{$command}' was rejected as malformed JSON. The emulator may be older than the shared secret feature. Leave RCON_SECRET empty until the emulator is upgraded.");
+        }
+
+        throw new RconConnectionException("Plus RCON command '{$command}' was rejected: {$response->message}");
     }
 }
