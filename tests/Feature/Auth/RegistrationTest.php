@@ -77,6 +77,20 @@ test('the discord webhook is dispatched after the response', function () {
     Bus::assertDispatchedAfterResponse(SendRegisteredUserWebhook::class);
 });
 
+test('the discord webhook cannot mention anyone or format visitor text', function () {
+    installHotel();
+    setSetting('enable_discord_webhook', '1');
+    setSetting('discord_webhook_url', 'https://discord.com/api/webhooks/123/token_value');
+    Http::fake(['discord.com/*' => Http::response(status: 204)]);
+
+    register(['mail' => '"@everyone`**[x](https://e.t)**_~|<>"@example.com'])->assertRedirect(RouteServiceProvider::HOME);
+
+    Http::assertSentCount(1);
+    Http::assertSent(fn ($request) => $request->url() === 'https://discord.com/api/webhooks/123/token_value'
+        && $request['allowed_mentions'] === ['parse' => []]
+        && $request['content'] === 'User: `Tester` has just registered, with the IP: `127.0.0.1` and E-mail: `"@everyone**[x](https://e.t)**_~|<>"@example.com`');
+});
+
 test('a required beta code cannot be omitted or reused', function () {
     installHotel();
     setSetting('requires_beta_code', '1');
