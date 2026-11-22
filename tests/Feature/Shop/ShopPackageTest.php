@@ -10,6 +10,7 @@ use App\Models\Shop\WebsiteShopItem;
 use App\Models\Shop\WebsiteShopPackage;
 use App\Models\Shop\WebsiteShopPurchase;
 use App\Models\User;
+use App\Support\PermissionRanks;
 use Database\Seeders\WebsiteShopSeeder;
 use Illuminate\Support\Collection;
 
@@ -45,6 +46,19 @@ test('the seeded shop categories have local icons and render once in the Atom th
     foreach ($categories as $category) {
         expect(substr_count($response->getContent(), route('shop.index', $category)))->toBe(1);
     }
+});
+
+test('the seeded shop sells no rank and no seeded package needs a player rank above the default', function () {
+    installHotel();
+    // The lowest staff rank on a stock Arcturus database.
+    setSetting('min_staff_rank', '3');
+    $this->seed(WebsiteShopSeeder::class);
+
+    $playerRanks = array_values(array_diff(array_keys(PermissionRanks::grantableRanks()), [1]));
+
+    expect($playerRanks)->toContain(2)
+        ->and(WebsiteShopItem::query()->where('type', 'rank')->pluck('name')->all())->toBe([])
+        ->and(WebsiteShopPackage::query()->whereIn('min_rank', $playerRanks)->pluck('name')->all())->toBe([]);
 });
 
 test('a package purchase charges the buyer and delivers its items', function () {
