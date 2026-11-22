@@ -5,6 +5,7 @@ namespace App\Support;
 use App\Enums\WebsiteSettingFormat;
 use App\Services\SettingsService;
 use Closure;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
@@ -143,18 +144,23 @@ final class WebsiteSettingRules
     }
 
     /**
-     * Log, at most once per request, that a stored value fails its rule, so
-     * the operator can find the cause from the log.
+     * Log that a stored value fails its rule, so the operator can find the
+     * cause. Each key logs at most once every ten minutes, and always when
+     * the cache store fails.
      */
     public static function reportRefused(string $key, string $value): void
     {
-        once(fn () => Log::error(sprintf(
+        if (! rescue(fn (): bool => Cache::add('website-setting-refused:' . $key, true, now()->addMinutes(10)), true, false)) {
+            return;
+        }
+
+        Log::error(sprintf(
             'Atom refused the stored %s setting "%s". %s APP_URL is %s.',
             $key,
             $value,
             self::message($key),
             (string) config('app.url'),
-        )));
+        ));
     }
 
     /**
