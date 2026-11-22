@@ -154,3 +154,26 @@ test('a reset token only changes the password of the account it was issued for',
     expect(Hash::check('N3wPassword!', $owner->fresh()->password))->toBeTrue()
         ->and(Hash::check('password', $other->fresh()->password))->toBeTrue();
 });
+
+test('a reset request replaces only the pending link of the requesting account', function () {
+    $victim = User::factory()->create(['mail' => 'victim@example.com']);
+    User::factory()->create(['mail' => 'victim@exämple.com']);
+
+    $this->post(route('forgot.password.post'), ['mail' => 'victim@example.com']);
+    $firstVictimToken = Mail::queued(ResetPasswordMail::class)->last()->token;
+
+    $this->post(route('forgot.password.post'), ['mail' => 'victim@exämple.com']);
+
+    $this->get(route('reset.password.get', $firstVictimToken))->assertOk();
+
+    $this->post(route('forgot.password.post'), ['mail' => 'victim@example.com']);
+    $secondVictimToken = Mail::queued(ResetPasswordMail::class)->last()->token;
+
+    $this->get(route('reset.password.get', $firstVictimToken))->assertRedirect(route('forgot.password.get'));
+    $this->post(route('reset.password.post', $secondVictimToken), [
+        'password' => 'N3wPassword!',
+        'password_confirmation' => 'N3wPassword!',
+    ])->assertRedirect(route('login'));
+
+    expect(Hash::check('N3wPassword!', $victim->fresh()->password))->toBeTrue();
+});
