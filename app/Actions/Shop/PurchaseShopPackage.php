@@ -80,6 +80,8 @@ final readonly class PurchaseShopPackage
                 ? __('Your rank is too high to purchase this package')
                 : __("The recipient's rank is too high to receive this package"));
         }
+
+        $this->fulfillPackage->ensureRanksApply($recipient, $package);
     }
 
     private function prepareRecipient(User $recipient): void

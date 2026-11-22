@@ -58,6 +58,22 @@ final readonly class FulfillPackage
         }
     }
 
+    /**
+     * Refuse the package when one of its rank items cannot apply to the user.
+     *
+     * @throws ShopPurchaseException
+     */
+    public function ensureRanksApply(User $user, WebsiteShopPackage $package): void
+    {
+        $package->loadMissing('items');
+
+        foreach ($package->items as $item) {
+            if ($item->type === ShopItemType::Rank) {
+                $this->applicableRank($user, $item);
+            }
+        }
+    }
+
     private function giveCurrency(User $user, WebsiteShopItem $item, int $quantity): void
     {
         // type_value format: "credits:100" or "duckets:50".
