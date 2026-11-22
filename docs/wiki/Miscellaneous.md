@@ -21,4 +21,16 @@ Change these in Housekeeping, under CMS settings. Your theme and emulator decide
 
 `/api/avatar-image` reads the same parameters as Habbo's imager and redirects to a signed image. It draws only looks that a user wears. Any other figure gets the `start_look` image. The route allows 300 requests per minute per IP address. Apply a rate limit to `/avatars/` at the proxy as well, because browsers can request signed images directly.
 
+## Checked values
+
+Atom refuses to save a value that does not fit its setting:
+
+- `nitro_path` must be a path on this site, such as `/client/nitro`, or a URL on `APP_URL` or an origin in `NITRO_ALLOWED_ORIGINS`. Atom also checks it before it opens the client. With another value, the client page returns 503 and no login ticket is sent.
+- Links and images (`housekeeping_url`, `discord_invitation_link`, `avatar_imager`, `cms_logo`, `cms_header`, `cms_me_backdrop`, `badges_path`, `group_badge_path`, `room_thumbnail_path`, `furniture_icons_path`, `catalog_icons_path`, `ads_picture_path`) must be a path on this site, an `https://` URL, or a URL on `APP_URL`.
+- File and folder paths (`flash_external_texts_file`, `nitro_external_texts_file`, `badge_path_filesystem`, `ads_path_filesystem`) must be absolute and inside a folder in `HOTEL_FILE_ROOTS`. The default is `/var/www/gamedata,/var/www/hotel/hotel-files,C:\Hotel\hotel-files`. Atom does not read or write a texts file outside these folders.
+- `theme` must be an installed theme. `rcon_ip` must be an IP address or a host name, and `rcon_port` a port from 1 to 65535.
+- On and off settings, such as `force_staff_2fa` and `maintenance_enabled`, must be `0` or `1`. Rank settings, such as `min_staff_rank`, must be 1 or higher. `max_accounts_per_ip` must be 0 or more.
+
+Only staff with the housekeeping permission `manage_sensitive_website_settings` can change `nitro_path`, the file and folder paths, `rcon_ip`, `rcon_port`, `force_staff_2fa` and `min_staff_rank`. New and existing hotels get this permission for the highest rank only.
+
 Every row in `website_settings` has a comment that explains it. If you edit the table by hand, see [changing settings](README.md#changing-settings).

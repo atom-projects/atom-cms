@@ -43,7 +43,12 @@ class CmsSettingResource extends Resource
                             ->maxLength(50)
                             ->autocomplete()
                             ->unique(ignoreRecord: true)
-                            ->required(),
+                            ->required()
+                            ->rule(fn (): Closure => function (string $attribute, mixed $value, Closure $fail): void {
+                                if (is_string($value) && ! (auth()->user()?->can('useKey', [WebsiteSetting::class, $value]) ?? false)) {
+                                    $fail('Only the highest staff rank may manage this setting.');
+                                }
+                            }),
 
                         TextInput::make('value')
                             ->label(__('filament::resources.inputs.value'))

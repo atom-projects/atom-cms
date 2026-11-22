@@ -92,6 +92,11 @@ class HousekeepingPermissionSeeder extends Seeder
                 'description' => 'The minimum rank required before being able to manage website settings',
             ],
             [
+                'permission' => 'manage_sensitive_website_settings',
+                'min_rank' => PermissionRanks::ceiling(),
+                'description' => 'The minimum rank required before being able to change the client, file path, RCON and staff two-factor website settings',
+            ],
+            [
                 'permission' => 'manage_website_blacklists',
                 'min_rank' => 6,
                 'description' => 'The minimum rank required before being able to manage website blacklists',
