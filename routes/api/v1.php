@@ -27,8 +27,8 @@ Route::middleware(['maintenance', 'check.ban', 'force.staff.2fa'])->group(functi
 
     Route::middleware('auth:sanctum')->group(function (): void {
         Route::get('me', [AccountController::class, 'show'])->name('me');
-        Route::put('me/account', [AccountController::class, 'update'])->name('me.account');
-        Route::put('me/password', [AccountController::class, 'password'])->name('me.password');
+        Route::put('me/account', [AccountController::class, 'update'])->middleware('throttle:current-password')->name('me.account');
+        Route::put('me/password', [AccountController::class, 'password'])->middleware('throttle:current-password')->name('me.password');
         Route::get('me/sessions', [AccountController::class, 'sessions'])->name('me.sessions');
         Route::post('me/referral-claim', [AccountController::class, 'claimReferral'])->middleware('throttle:5,1')->name('me.referral-claim');
         Route::get('me/two-factor', [TwoFactorController::class, 'show'])->withoutMiddleware('force.staff.2fa')->name('me.two-factor');

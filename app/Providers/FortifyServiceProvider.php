@@ -50,6 +50,15 @@ class FortifyServiceProvider extends ServiceProvider
         RateLimiter::for('two-factor-settings', fn (Request $request) => Limit::perMinute(6)->by(
             ($request->user()?->getAuthIdentifier() ?? 'guest') . '|' . $request->ip(),
         ));
+        // Keyed by account only, so new IP addresses do not give a stolen session more guesses.
+        // Password fields are not trimmed, so a value of only spaces is still a guess.
+        RateLimiter::for('current-password', function (Request $request): Limit {
+            if ($request->input('current_password') === null && $request->input('password') === null) {
+                return Limit::none();
+            }
+
+            return Limit::perMinute(5)->by($request->user()?->getAuthIdentifier() ?? $request->ip());
+        });
     }
 
     private function configureViews(): void

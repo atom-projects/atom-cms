@@ -90,10 +90,10 @@ Route::middleware(['maintenance', 'check.ban', 'force.staff.2fa'])->group(functi
             // User settings routes
             Route::prefix('settings')->group(function () {
                 Route::get('/account', [AccountSettingsController::class, 'edit'])->name('settings.account.show');
-                Route::put('/account', [AccountSettingsController::class, 'update'])->name('settings.account.update');
+                Route::put('/account', [AccountSettingsController::class, 'update'])->middleware('throttle:current-password')->name('settings.account.update');
 
                 Route::get('/password', [PasswordSettingsController::class, 'edit'])->name('settings.password.show');
-                Route::put('/password', [PasswordSettingsController::class, 'update'])->name('settings.password.update');
+                Route::put('/password', [PasswordSettingsController::class, 'update'])->middleware('throttle:current-password')->name('settings.password.update');
 
                 Route::get('/session-logs', [AccountSettingsController::class, 'sessionLogs'])->name('settings.session-logs');
 
