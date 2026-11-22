@@ -155,7 +155,7 @@ final class WebsiteSettingRules
             return;
         }
 
-        $withoutUserInfo = preg_replace('~^((?:[a-z][a-z\d+.\-]*:)?//)[^/?#]*@~i', '$1***@', $value);
+        $withoutUserInfo = preg_replace('~^([\x00-\x20]*(?:[a-z][a-z\d+.\-]+:[/\\\\]*|[/\\\\]{2}))[^/\\\\?#]*@~i', '$1***@', $value);
 
         Log::error(sprintf(
             'Atom refused the stored %s setting %s. %s APP_URL is %s.',
