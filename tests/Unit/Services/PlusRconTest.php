@@ -4,9 +4,12 @@ use App\Enums\CurrencyTypes;
 use App\Exceptions\RconConnectionException;
 use App\Models\User;
 use App\Services\PlusRcon;
+use Illuminate\Config\Repository;
+use Illuminate\Container\Container;
 
-function runPlusRconServer(int $connections, Closure $client, array $responses = []): array
+function runPlusRconServer(int $connections, Closure $client, array $responses = [], ?string $secret = null, ?Closure $makeRcon = null): array
 {
+    $makeRcon ??= static fn (int $port): PlusRcon => new PlusRcon('127.0.0.1', $port, $secret);
     $encodedResponses = base64_encode(json_encode($responses, JSON_THROW_ON_ERROR));
     $script = <<<'PHP'
     $responses = json_decode(base64_decode($argv[1]), true, flags: JSON_THROW_ON_ERROR);
@@ -40,7 +43,7 @@ function runPlusRconServer(int $connections, Closure $client, array $responses =
     try {
         $port = (int) trim((string) fgets($pipes[1]));
         expect($port)->toBeGreaterThan(0);
-        $client(new PlusRcon('127.0.0.1', $port));
+        $client($makeRcon($port));
         $requests = json_decode(base64_decode(trim((string) fgets($pipes[1]))), true, flags: JSON_THROW_ON_ERROR);
     } finally {
         $stdout = stream_get_contents($pipes[1]);
@@ -101,4 +104,84 @@ test('plus rcon exposes native rejections and rejects unsupported operations bef
     expect(fn () => $rcon->sendGift($user, 10))->toThrow(RconConnectionException::class, 'does not support sending gifts')
         ->and(fn () => $rcon->forwardUser($user, 10))->toThrow(RconConnectionException::class, 'does not support forwarding users')
         ->and(fn () => $rcon->updateConfig($user, ':shutdown'))->toThrow(RconConnectionException::class, 'does not support executing configuration commands');
+});
+
+test('plus rcon sends the configured secret with every request', function () {
+    $user = new User;
+    $user->id = 42;
+    $secret = str_repeat('fake', 8);
+
+    $requests = runPlusRconServer(2, function (PlusRcon $rcon) use ($user): void {
+        $rcon->giveBadge($user, 'ADM');
+        $rcon->updateCatalog();
+    }, secret: $secret);
+
+    expect(array_map(static fn (string $request): array => json_decode($request, true, flags: JSON_THROW_ON_ERROR), $requests))->toBe([
+        ['command' => 'give_user_badge', 'parameters' => ['42', 'ADM'], 'secret' => $secret],
+        ['command' => 'reload_catalog', 'parameters' => [], 'secret' => $secret],
+    ]);
+});
+
+test('plus rcon sends no secret when none is configured', function (?string $secret) {
+    $requests = runPlusRconServer(1, function (PlusRcon $rcon): void {
+        $rcon->updateCatalog();
+    }, secret: $secret);
+
+    expect(json_decode($requests[0], true, flags: JSON_THROW_ON_ERROR))->toBe(['command' => 'reload_catalog', 'parameters' => []]);
+})->with([null, '']);
+
+test('plus rcon reads the secret from configuration when resolved from the container', function () {
+    $secret = str_repeat('fake', 8);
+    $previous = Container::getInstance();
+    $container = new Container;
+    $container->instance('config', new Repository);
+    Container::setInstance($container);
+    config(['habbo.rcon.secret' => $secret]);
+
+    try {
+        $requests = runPlusRconServer(1, function (PlusRcon $rcon): void {
+            $rcon->updateCatalog();
+        }, makeRcon: static fn (int $port): PlusRcon => app(PlusRcon::class, ['host' => '127.0.0.1', 'port' => $port]));
+    } finally {
+        Container::setInstance($previous);
+    }
+
+    expect(json_decode($requests[0], true, flags: JSON_THROW_ON_ERROR))
+        ->toBe(['command' => 'reload_catalog', 'parameters' => [], 'secret' => $secret]);
+});
+
+test('plus rcon reports an invalid request with a secret hint that holds for every cause', function (?string $secret) {
+    $user = new User;
+    $user->id = 42;
+
+    runPlusRconServer(1, function (PlusRcon $rcon) use ($user): void {
+        expect(fn () => $rcon->disconnectUser($user))->toThrow(
+            RconConnectionException::class,
+            "Plus RCON refused command 'disconnect_user' as invalid. If Rcon:Secret is set in the emulator config, check that RCON_SECRET matches it.",
+        );
+    }, [['status' => 1, 'message' => 'Invalid RCON request.']], $secret);
+})->with([null, str_repeat('fake', 8)]);
+
+test('plus rcon hints that an emulator without secret support refuses a configured secret', function () {
+    $user = new User;
+    $user->id = 42;
+    $secret = str_repeat('fake', 8);
+
+    runPlusRconServer(1, function (PlusRcon $rcon) use ($user, $secret): void {
+        expect(fn () => $rcon->disconnectUser($user))->toThrow(function (RconConnectionException $exception) use ($secret): void {
+            expect($exception->getMessage())
+                ->toBe("Plus RCON command 'disconnect_user' was rejected as malformed JSON. The emulator may be older than the shared secret feature. Leave RCON_SECRET empty until the emulator is upgraded.")
+                ->not->toContain($secret);
+        });
+    }, [['status' => 1, 'message' => 'Malformed RCON JSON.']], $secret);
+});
+
+test('plus rcon reports malformed json without the secret hint when no secret is configured', function () {
+    $user = new User;
+    $user->id = 42;
+
+    runPlusRconServer(1, function (PlusRcon $rcon) use ($user): void {
+        expect(fn () => $rcon->disconnectUser($user))
+            ->toThrow(RconConnectionException::class, "Plus RCON command 'disconnect_user' was rejected: Malformed RCON JSON.");
+    }, [['status' => 1, 'message' => 'Malformed RCON JSON.']]);
 });
