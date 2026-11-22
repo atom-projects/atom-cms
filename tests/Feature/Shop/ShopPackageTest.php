@@ -252,6 +252,46 @@ test('a rank package with a staff rank is refused before payment', function () {
         ->and(WebsiteShopPurchase::count())->toBe(0);
 });
 
+test('a refused rank package sends nothing to the emulator', function (int $buyerRank, ?int $receiverRank, string $rank, string $message) {
+    installHotel();
+
+    $buyer = User::factory()->create(['website_balance' => 10000, 'rank' => $buyerRank, 'online' => '1'])->refresh();
+    $receiver = $receiverRank === null ? $buyer : User::factory()->create(['rank' => $receiverRank, 'online' => '1'])->refresh();
+    $package = makePackage(['is_giftable' => true]);
+    attachRankItem($package, $rank);
+    $this->rcon->connected();
+
+    $this->actingAs($buyer)
+        ->post(route('shop.buy-package', $package), $receiver->is($buyer) ? [] : ['receiver' => $receiver->username])
+        ->assertSessionHasErrors(['message' => $message]);
+
+    expect($this->rcon->calls)->toBe([])
+        ->and($receiver->refresh()->online)->toBeTrue()
+        ->and((int) $buyer->refresh()->website_balance)->toBe(10000)
+        ->and(WebsiteShopPurchase::count())->toBe(0);
+})->with([
+    'a gift to an online administrator' => [1, 7, '2', 'The account that receives this package already has this rank or a higher one'],
+    'an online player buying a rank they already have' => [2, null, '2', 'The account that receives this package already has this rank or a higher one'],
+    'a staff rank gifted to an online player' => [1, 1, '7', 'This package is currently unavailable'],
+]);
+
+test('an accepted rank package still alerts and disconnects an online receiver', function () {
+    installHotel();
+
+    $buyer = User::factory()->create(['website_balance' => 10000, 'rank' => 1, 'online' => '1'])->refresh();
+    $package = makePackage();
+    attachRankItem($package, '2');
+    $this->rcon->connected();
+
+    $this->actingAs($buyer)
+        ->post(route('shop.buy-package', $package))
+        ->assertSessionHas('success');
+
+    expect((int) $buyer->refresh()->rank)->toBe(2)
+        ->and($buyer->online)->toBeFalse()
+        ->and(array_map(fn (array $call): string => $call['args']['command'], $this->rcon->calls))->toBe(['alertuser', 'disconnect']);
+});
+
 test('an online recipient is disconnected before atomic delivery', function () {
     installHotel();
 
