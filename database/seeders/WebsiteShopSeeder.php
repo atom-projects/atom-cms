@@ -94,9 +94,6 @@ class WebsiteShopSeeder extends Seeder
         'Staff Badge' => ['type' => 'badge', 'type_value' => 'ADM'],
         'Beta Tester Badge' => ['type' => 'badge', 'type_value' => 'BTA'],
 
-        // Ranks
-        'VIP Rank' => ['type' => 'rank', 'type_value' => '2'],
-
         // Inactive item: kept for purchase history, hidden from the package item picker
         // (Filament only lists items where is_active is true) and unused below.
         'Retired Rare Statue' => ['type' => 'furniture', 'type_value' => '9999', 'is_active' => false],
@@ -234,27 +231,26 @@ class WebsiteShopSeeder extends Seeder
             // VIP
             [
                 'name' => 'VIP Membership',
-                'description' => 'Unlock VIP status with exclusive badge, rank, and a generous currency bonus.',
+                'description' => 'The exclusive VIP badge with a generous bonus of credits and diamonds.',
                 'category' => 'VIP',
                 'price' => 1999,
                 'is_giftable' => false,
-                'items' => ['VIP Rank' => 1, 'VIP Badge' => 1, '5000 Credits' => 1, '100 Diamonds' => 1],
+                'items' => ['VIP Badge' => 1, '5000 Credits' => 1, '100 Diamonds' => 1],
             ],
             [
                 'name' => 'VIP Furniture Bundle',
-                'description' => 'Exclusive HC furniture only available to VIP members.',
+                'description' => 'A bundle of exclusive HC furniture for your room.',
                 'category' => 'VIP',
                 'price' => 2499,
-                'min_rank' => 2,
                 'items' => ['Majestic Chair' => 2, 'Nordic Table' => 1, 'Persian Carpet' => 1, 'Heavy Duty Fireplace' => 1, 'Victorian Street Light' => 2, 'Electric Butler' => 1],
             ],
             [
                 'name' => 'VIP Deluxe',
-                'description' => 'The complete VIP experience: rank, badge, currency, and premium furniture.',
+                'description' => 'The complete VIP set: the VIP badge, credits, diamonds, duckets, and premium furniture.',
                 'category' => 'VIP',
                 'price' => 4999,
                 'is_giftable' => false,
-                'items' => ['VIP Rank' => 1, 'VIP Badge' => 1, '5000 Credits' => 1, '500 Diamonds' => 1, '500 Duckets' => 1, 'Throne' => 1, 'Throne Sofa' => 2, 'Mega TV Set' => 1],
+                'items' => ['VIP Badge' => 1, '5000 Credits' => 1, '500 Diamonds' => 1, '500 Duckets' => 1, 'Throne' => 1, 'Throne Sofa' => 2, 'Mega TV Set' => 1],
             ],
             [
                 'name' => 'Veteran Appreciation Pack',
@@ -359,13 +355,13 @@ class WebsiteShopSeeder extends Seeder
             // Limited Edition
             [
                 'name' => 'Founder\'s Package',
-                'description' => 'An exclusive package for early supporters. Includes rare items, VIP status, and a massive currency boost. Once they\'re gone, they\'re gone!',
+                'description' => 'An exclusive package for early supporters. Includes rare items, the VIP and Beta Tester badges, and a massive currency boost. Once they\'re gone, they\'re gone!',
                 'category' => 'Limited Edition',
                 'price' => 9999,
                 'stock' => 10,
                 'limit_per_user' => 1,
                 'is_giftable' => false,
-                'items' => ['VIP Rank' => 1, 'VIP Badge' => 1, 'Beta Tester Badge' => 1, '5000 Credits' => 2, '500 Diamonds' => 1, 'Golden Dragon' => 1, 'Throne' => 1, 'Golden Elephant' => 1],
+                'items' => ['VIP Badge' => 1, 'Beta Tester Badge' => 1, '5000 Credits' => 2, '500 Diamonds' => 1, 'Golden Dragon' => 1, 'Throne' => 1, 'Golden Elephant' => 1],
             ],
             [
                 'name' => 'Ultra Rare Dragon Bundle',
