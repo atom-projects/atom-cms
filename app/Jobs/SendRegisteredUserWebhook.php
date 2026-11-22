@@ -72,9 +72,14 @@ class SendRegisteredUserWebhook implements ShouldQueue
         }
     }
 
-    /** Discord renders nothing inside a code span, so visitor text cannot format, link or mention. */
+    /**
+     * Discord renders nothing inside a code span, so visitor text cannot format, link or mention.
+     * Control characters and line separators become a space so the value stays on one line.
+     */
     private function inlineCode(string $value): string
     {
-        return '`' . str_replace('`', '', $value) . '`';
+        $value = preg_replace('/(?:[\x00-\x1F\x7F]|\xC2[\x80-\x9F]|\xE2\x80[\xA8\xA9])+/', ' ', str_replace('`', '', $value));
+
+        return '`' . $value . '`';
     }
 }
