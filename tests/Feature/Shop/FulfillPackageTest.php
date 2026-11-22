@@ -8,6 +8,8 @@ use App\Models\Game\Permission;
 use App\Models\Shop\WebsiteShopItem;
 use App\Models\Shop\WebsiteShopPackage;
 use App\Models\User;
+use App\Services\SettingsService;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Exceptions;
 
 function packageWithItem(string $type, string $typeValue, int $quantity = 1): WebsiteShopPackage
@@ -97,7 +99,9 @@ test('a rank item never grants a staff rank', function (string $staffRank, int $
 
 test('a broken staff rank setting refuses every rank item and names the setting in the log', function (string $staffRank, string $itemRank) {
     Exceptions::fake();
-    setSetting('min_staff_rank', $staffRank);
+    // A broken value can be in the table without ever passing a model save.
+    DB::table('website_settings')->updateOrInsert(['key' => 'min_staff_rank'], ['value' => $staffRank, 'comment' => '']);
+    app(SettingsService::class)->refresh();
     $user = User::factory()->create(['rank' => 1]);
     $package = packageWithItem('rank', $itemRank);
 
