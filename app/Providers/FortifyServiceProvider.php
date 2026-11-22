@@ -63,13 +63,14 @@ class FortifyServiceProvider extends ServiceProvider
         });
         // Counts every valid address, with or without an account, so a 429 does not reveal which addresses exist.
         // The window equals the link lifetime, so a blocked address always still holds a live link.
+        // The key is only trimmed and lowercased, so look-alike addresses never share a budget.
         RateLimiter::for('password-reset-links', function (Request $request): Limit {
             if (Validator::make($request->only('mail'), (new ForgotPasswordRequest)->rules())->fails()) {
                 return Limit::none();
             }
 
             return Limit::perMinutes(max(1, (int) config('habbo.password_reset_token_time')), 3)
-                ->by('mail:' . $request->string('mail')->lower()->transliterate());
+                ->by('mail:' . $request->string('mail')->trim()->lower());
         });
     }
 
