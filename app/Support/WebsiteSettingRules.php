@@ -5,6 +5,7 @@ namespace App\Support;
 use App\Enums\WebsiteSettingFormat;
 use Closure;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -103,6 +104,21 @@ final class WebsiteSettingRules
         if (! self::accepts($key, $value)) {
             throw ValidationException::withMessages([$key => self::message($key)]);
         }
+    }
+
+    /**
+     * Log, at most once per request, that a stored value fails its rule, so
+     * the operator can find the cause from the log.
+     */
+    public static function reportRefused(string $key, string $value): void
+    {
+        once(fn () => Log::error(sprintf(
+            'Atom refused the stored %s setting "%s". %s APP_URL is %s.',
+            $key,
+            $value,
+            self::message($key),
+            (string) config('app.url'),
+        )));
     }
 
     /**

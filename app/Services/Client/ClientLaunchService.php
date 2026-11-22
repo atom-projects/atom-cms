@@ -26,6 +26,8 @@ class ClientLaunchService
         $path = (string) setting('nitro_path', config('habbo.client.nitro_path'));
 
         if (! WebsiteSettingRules::accepts('nitro_path', $path)) {
+            WebsiteSettingRules::reportRefused('nitro_path', $path);
+
             return null;
         }
 
