@@ -11,7 +11,7 @@ use Laravel\Fortify\Http\Controllers\RegisteredUserController;
 
 Route::middleware(['guest', 'maintenance', 'check.ban'])->group(function () {
     Route::post('/register', [RegisteredUserController::class, 'store'])->middleware('throttle:6,1')->name('register.store');
-    Route::post('/forgot-password', [ForgotPasswordController::class, 'submitForgetPassword'])->middleware('throttle:6,1')->name('forgot.password.post');
+    Route::post('/forgot-password', [ForgotPasswordController::class, 'submitForgetPassword'])->middleware(['throttle:6,1', 'throttle:password-reset-links'])->name('forgot.password.post');
     Route::post('/reset-password/{token}', [ForgotPasswordController::class, 'submitResetPassword'])->middleware('throttle:6,1')->name('reset.password.post');
 });
 

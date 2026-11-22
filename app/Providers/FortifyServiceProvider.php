@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Actions\Fortify\CreateNewUser;
+use App\Http\Requests\ForgotPasswordRequest;
 use App\Models\Articles\WebsiteArticle;
 use App\Models\Miscellaneous\CameraWeb;
 use App\Models\User;
@@ -13,6 +14,7 @@ use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 use Laravel\Fortify\Actions\AttemptToAuthenticate;
@@ -58,6 +60,16 @@ class FortifyServiceProvider extends ServiceProvider
             }
 
             return Limit::perMinute(5)->by($request->user()?->getAuthIdentifier() ?? $request->ip());
+        });
+        // Counts every valid address, with or without an account, so a 429 does not reveal which addresses exist.
+        // The window equals the link lifetime, so a blocked address always still holds a live link.
+        RateLimiter::for('password-reset-links', function (Request $request): Limit {
+            if (Validator::make($request->only('mail'), (new ForgotPasswordRequest)->rules())->fails()) {
+                return Limit::none();
+            }
+
+            return Limit::perMinutes(max(1, (int) config('habbo.password_reset_token_time')), 3)
+                ->by('mail:' . $request->string('mail')->lower()->transliterate());
         });
     }
 
