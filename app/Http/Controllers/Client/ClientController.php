@@ -18,13 +18,16 @@ class ClientController extends Controller
     {
         $user = AuthenticatedUser::from($request);
 
-        $view = match ($client) {
-            'flash' => 'client.flash',
-            default => 'client.nitro',
-        };
+        $launcher = app(ClientLaunchService::class);
+        $ipAddress = $request->ip() ?: 'unknown';
 
-        return view($view, [
-            'sso' => app(ClientLaunchService::class)->ticket($user, $request->ip() ?: 'unknown'),
-        ]);
+        if ($client === 'flash') {
+            return view('client.flash', ['sso' => $launcher->ticket($user, $ipAddress)]);
+        }
+
+        $launch = $launcher->nitro($user, $ipAddress);
+        abort_if($launch === null, 503, 'The game client is not configured correctly.');
+
+        return view('client.nitro', ['nitroUrl' => $launch['url']]);
     }
 }

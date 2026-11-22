@@ -24,12 +24,18 @@ class ToolController extends Controller
         $type = $validated['client'] ?? 'nitro';
         abort_if($type === 'flash' && ! config('habbo.client.flash_enabled'), 404);
         abort_if($type === 'air' && ! config('habbo.client.air_enabled'), 404);
-        $sso = $client->ticket(AuthenticatedUser::from($request), $request->ip() ?: 'unknown');
+        $user = AuthenticatedUser::from($request);
+        $ipAddress = $request->ip() ?: 'unknown';
+        if ($type === 'nitro') {
+            $launch = $client->nitro($user, $ipAddress);
+            abort_if($launch === null, 503, 'The game client is not configured correctly.');
+
+            return response()->json(['data' => ['client' => $type, ...$launch]])->header('Cache-Control', 'no-store, private');
+        }
+        $sso = $client->ticket($user, $ipAddress);
         $data = ['client' => $type, 'sso' => $sso];
         if ($type === 'air') {
             $data['url'] = $client->airUrl($sso);
-        } elseif ($type === 'nitro') {
-            $data['url'] = rtrim(url((string) setting('nitro_path', config('habbo.client.nitro_path'))), '/') . '/index.html?sso=' . rawurlencode($sso);
         } else {
             $base = rtrim(url((string) config('habbo.flash.swf_base_path')), '/');
             $data['url'] = $base . '/' . config('habbo.flash.production_folder') . '/' . config('habbo.flash.habbo_swf');

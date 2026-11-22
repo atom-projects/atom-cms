@@ -47,7 +47,7 @@
     </div>
 @endif
 
-<iframe id="nitro" src="{{ sprintf('%s/index.html?sso=%s', setting('nitro_path'), $sso) }}"
+<iframe id="nitro" src="{{ $nitroUrl }}"
         class="absolute top-0 left-0 m-0 h-full w-full overflow-hidden border-none p-0"></iframe>
 
 <iframe data-website-frame hidden title="{{ setting('hotel_name') }}"
