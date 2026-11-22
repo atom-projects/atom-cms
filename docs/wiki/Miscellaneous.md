@@ -25,7 +25,7 @@ Change these in Housekeeping, under CMS settings. Your theme and emulator decide
 
 Atom refuses to save a value that does not fit its setting:
 
-- `nitro_path` must be a path on this site, such as `/client/nitro`, or a URL on `APP_URL` or an origin in `NITRO_ALLOWED_ORIGINS`. Atom also checks it before it opens the client. With another value, the client page returns 503 and no login ticket is sent.
+- `nitro_path` must be a path on this site, such as `/client/nitro`, or a URL on `APP_URL`, `ATOM_FRONTEND_URL` or an origin in `NITRO_ALLOWED_ORIGINS`. Atom also checks it before it opens the client. With another value, the client page returns 503 and no login ticket is sent.
 - Links and images (`housekeeping_url`, `discord_invitation_link`, `avatar_imager`, `cms_logo`, `cms_header`, `cms_me_backdrop`, `badges_path`, `group_badge_path`, `room_thumbnail_path`, `furniture_icons_path`, `catalog_icons_path`, `ads_picture_path`) must be a path on this site, an `https://` URL, or a URL on `APP_URL`.
 - File and folder paths (`flash_external_texts_file`, `nitro_external_texts_file`, `badge_path_filesystem`, `ads_path_filesystem`) must be absolute and inside a folder in `HOTEL_FILE_ROOTS`. The default is `/var/www/gamedata,/var/www/hotel/hotel-files,C:\Hotel\hotel-files`. Atom does not read or write a texts file outside these folders.
 - `theme` must be an installed theme. `rcon_ip` must be an IP address or a host name, and `rcon_port` a port from 1 to 65535.

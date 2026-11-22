@@ -124,13 +124,14 @@ final class WebsiteSettingRules
     }
 
     /**
-     * The origins the game client may load from: this site and NITRO_ALLOWED_ORIGINS.
+     * The origins the game client may load from: this site, the headless
+     * frontend (ATOM_FRONTEND_URL) and NITRO_ALLOWED_ORIGINS.
      *
      * @return list<string>
      */
     public static function clientOrigins(): array
     {
-        $origins = [self::origin((string) config('app.url'))];
+        $origins = [self::origin((string) config('app.url')), self::origin((string) config('atom.frontend_url'))];
 
         foreach ((array) config('habbo.client.nitro_allowed_origins', []) as $origin) {
             $origins[] = self::origin((string) $origin);
@@ -142,7 +143,7 @@ final class WebsiteSettingRules
     private static function message(string $key): string
     {
         return match (self::FORMATS[$key] ?? null) {
-            WebsiteSettingFormat::ClientUrl => 'Use a path on this site, such as /client/nitro, or a URL on an origin listed in NITRO_ALLOWED_ORIGINS.',
+            WebsiteSettingFormat::ClientUrl => 'Use a path on this site, such as /client/nitro, or a URL on APP_URL, ATOM_FRONTEND_URL or an origin listed in NITRO_ALLOWED_ORIGINS.',
             WebsiteSettingFormat::Link => 'Use a path on this site, such as /assets/images/logo.png, or an https:// URL.',
             WebsiteSettingFormat::HotelFile, WebsiteSettingFormat::HotelFolder => 'Use an absolute path inside one of these folders (HOTEL_FILE_ROOTS): ' . implode(', ', self::hotelFileRoots()) . '.',
             WebsiteSettingFormat::Theme => 'Use one of the installed themes: ' . implode(', ', self::themes()) . '.',
