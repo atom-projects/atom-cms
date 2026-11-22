@@ -62,6 +62,7 @@ class WebsiteShopItemResource extends Resource
 
             FileUpload::make('image')
                 ->image()
+                ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/gif', 'image/webp'])
                 ->directory('shop-items')
                 ->visibility('public'),
 
