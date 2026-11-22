@@ -247,7 +247,8 @@ final class WebsiteSettingRules
 
     private static function isInsideHotelFileRoots(string $path): bool
     {
-        $isAbsolute = str_starts_with($path, '/') || preg_match('#^[A-Za-z]:[\\\\/]#', $path) === 1;
+        // Outside Windows, PHP reads C:/x as a path relative to the working directory.
+        $isAbsolute = str_starts_with($path, '/') || (PHP_OS_FAMILY === 'Windows' && preg_match('#^[A-Za-z]:[\\\\/]#', $path) === 1);
 
         if (! $isAbsolute || str_contains($path, "\0") || preg_match('#(^|[\\\\/])\.\.([\\\\/]|$)#', $path) === 1) {
             return false;
