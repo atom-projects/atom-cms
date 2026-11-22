@@ -85,3 +85,18 @@ test('invalid addresses are rejected without using a shared reset budget', funct
     'not an address' => ['not-an-address'],
     'not a string' => [['reset-limit@example.com']],
 ]);
+
+test('a look-alike address does not use up the reset budget of another address', function (string $lookAlike) {
+    foreach (range(1, 3) as $attempt) {
+        $this->withServerVariables(['REMOTE_ADDR' => "203.0.113.{$attempt}"])
+            ->postJson(route('forgot.password.post'), ['mail' => $lookAlike])
+            ->assertOk();
+    }
+
+    $this->withServerVariables(['REMOTE_ADDR' => '203.0.113.99'])
+        ->postJson(route('forgot.password.post'), ['mail' => 'reset-limit@example.com'])
+        ->assertOk();
+})->with([
+    'accent in the domain' => 'reset-limit@exämple.com',
+    'fullwidth letter' => 'ｒeset-limit@example.com',
+]);
