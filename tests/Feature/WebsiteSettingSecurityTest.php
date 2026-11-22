@@ -26,7 +26,6 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Once;
 use Livewire\Livewire;
 
 const SENSITIVE_SETTINGS_PERMISSION = 'manage_sensitive_website_settings';
@@ -597,7 +596,6 @@ test('a refused setting is logged once per key, not on every request', function 
     $logsAbout = fn (string $key): Closure => fn (string $message): bool => str_contains($message, $key);
 
     WebsiteSettingRules::reportRefused('badge_path_filesystem', '/srv/outside/badges');
-    Once::flush();
     WebsiteSettingRules::reportRefused('badge_path_filesystem', '/srv/outside/badges');
     WebsiteSettingRules::reportRefused('ads_path_filesystem', '/srv/outside/ads');
 
@@ -605,7 +603,6 @@ test('a refused setting is logged once per key, not on every request', function 
     Log::shouldHaveReceived('error')->withArgs($logsAbout('ads_path_filesystem'))->once();
 
     $this->travel(11)->minutes();
-    Once::flush();
     WebsiteSettingRules::reportRefused('badge_path_filesystem', '/srv/outside/badges');
 
     Log::shouldHaveReceived('error')->withArgs($logsAbout('badge_path_filesystem'))->twice();
@@ -620,18 +617,34 @@ test('a refused setting is still logged when the cache store fails', function ()
     Log::shouldHaveReceived('error')->withArgs(fn (string $message): bool => str_contains($message, 'ads_path_filesystem'));
 });
 
-test('a refused link is logged without its user name and password', function () {
+test('a refused link is logged without its user name and password', function (string $value, string $logged) {
     Log::spy();
 
-    WebsiteSettingRules::reportRefused('nitro_path', 'https://owner:s3cret@client.attacker.example/nitro');
+    WebsiteSettingRules::reportRefused('nitro_path', $value);
 
     Log::shouldHaveReceived('error')
-        ->withArgs(fn (string $message): bool => ! str_contains($message, 'owner')
-            && ! str_contains($message, 's3cret')
-            && str_contains($message, 'https://')
-            && str_contains($message, 'client.attacker.example/nitro'))
+        ->withArgs(fn (string $message): bool => str_contains($message, ' ' . json_encode($logged, JSON_UNESCAPED_SLASHES) . '. '))
         ->once();
-});
+})->with([
+    'url' => ['https://owner:s3cret@client.attacker.example/nitro', 'https://***@client.attacker.example/nitro'],
+    'leading space' => [' https://owner:s3cret@host/nitro', ' https://***@host/nitro'],
+    'leading tab' => ["\thttps://owner:s3cret@host/nitro", "\thttps://***@host/nitro"],
+    'backslashes' => ['https:\\\\owner:s3cret@host/nitro', 'https:\\\\***@host/nitro'],
+    'one slash' => ['https:/owner:s3cret@host', 'https:/***@host'],
+    'no slash' => ['https:owner:s3cret@host', 'https:***@host'],
+    'no scheme' => ['//user:pass@host', '//***@host'],
+    'user name only' => ['https://user@host', 'https://***@host'],
+    'at sign in the password' => ['https://user:p@ss@host/x', 'https://***@host/x'],
+    'upper case scheme' => ['HTTPS://owner:s3cret@host', 'HTTPS://***@host'],
+    'mail link' => ['mailto:someone@example.com', 'mailto:***@example.com'],
+    'at sign in the path' => ['https://host/a@b', 'https://host/a@b'],
+    'at sign in the query' => ['https://host/x?u=a@b', 'https://host/x?u=a@b'],
+    'unix path' => ['/srv/hotel/a@b', '/srv/hotel/a@b'],
+    'windows path' => ['C:\\Hotel\\files@2x', 'C:\\Hotel\\files@2x'],
+    'windows path with slashes' => ['C:/Hotel/a@b', 'C:/Hotel/a@b'],
+    'file in a windows drive root' => ['C:\\a@b', 'C:\\a@b'],
+    'plain text' => ['not a url', 'not a url'],
+]);
 
 test('a refused value cannot start a new line in the log', function () {
     $log = storage_path('logs/refused-setting-' . uniqid() . '.log');
