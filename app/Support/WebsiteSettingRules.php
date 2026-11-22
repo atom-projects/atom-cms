@@ -113,10 +113,10 @@ final class WebsiteSettingRules
     }
 
     /**
-     * The stored path of a file or folder setting, or null when it is empty or
-     * fails its rule. Every file read, write or delete through these settings
-     * goes through here, so a value stored before the rule existed is refused
-     * and logged instead of used.
+     * The stored path of a file, folder or link setting, or null when it is
+     * empty or fails its rule. Every file read, write or delete through these
+     * settings goes through here, so a value stored before the rule existed is
+     * refused and logged instead of used.
      */
     public static function hotelPath(string $key, ?string $default = null): ?string
     {
@@ -140,7 +140,7 @@ final class WebsiteSettingRules
      */
     public static function housekeepingUrl(): string
     {
-        return (string) setting('housekeeping_url', '/housekeeping');
+        return self::hotelPath('housekeeping_url') ?? '/housekeeping';
     }
 
     /**
