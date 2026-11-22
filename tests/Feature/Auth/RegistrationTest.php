@@ -91,6 +91,18 @@ test('the discord webhook cannot mention anyone or format visitor text', functio
         && $request['content'] === 'User: `Tester` has just registered, with the IP: `127.0.0.1` and E-mail: `"@everyone**[x](https://e.t)**_~|<>"@example.com`');
 });
 
+test('the discord webhook keeps line separators and tabs in the email out of the message', function () {
+    installHotel();
+    setSetting('enable_discord_webhook', '1');
+    setSetting('discord_webhook_url', 'https://discord.com/api/webhooks/123/token_value');
+    Http::fake(['discord.com/*' => Http::response(status: 204)]);
+
+    register(['mail' => "\"a\u{2028}b\\\tc\"@example.com"])->assertRedirect(RouteServiceProvider::HOME);
+
+    Http::assertSentCount(1);
+    Http::assertSent(fn ($request) => $request['content'] === 'User: `Tester` has just registered, with the IP: `127.0.0.1` and E-mail: `"a b\ c"@example.com`');
+});
+
 test('a required beta code cannot be omitted or reused', function () {
     installHotel();
     setSetting('requires_beta_code', '1');
