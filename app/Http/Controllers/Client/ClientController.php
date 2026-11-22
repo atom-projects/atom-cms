@@ -28,6 +28,7 @@ class ClientController extends Controller
         $launch = $launcher->nitro($user, $ipAddress);
         abort_if($launch === null, 503, 'The game client is not configured correctly.');
 
-        return view('client.nitro', ['nitroUrl' => $launch['url']]);
+        // Custom theme views may still build the URL from $sso; nitro() has already checked nitro_path.
+        return view('client.nitro', ['sso' => $launch['sso'], 'nitroUrl' => $launch['url']]);
     }
 }
