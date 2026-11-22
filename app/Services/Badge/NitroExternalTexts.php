@@ -3,7 +3,6 @@
 namespace App\Services\Badge;
 
 use App\Services\Files\AtomicFileWriter;
-use App\Services\SettingsService;
 use App\Support\BadgeCode;
 use App\Support\WebsiteSettingRules;
 use JsonException;
@@ -16,7 +15,6 @@ use RuntimeException;
 class NitroExternalTexts
 {
     public function __construct(
-        private readonly SettingsService $settings,
         private readonly AtomicFileWriter $files,
     ) {}
 
@@ -122,8 +120,6 @@ class NitroExternalTexts
 
     private function path(): ?string
     {
-        $path = $this->settings->getOrDefault('nitro_external_texts_file');
-
-        return is_string($path) && $path !== '' && WebsiteSettingRules::accepts('nitro_external_texts_file', $path) ? $path : null;
+        return WebsiteSettingRules::hotelPath('nitro_external_texts_file');
     }
 }

@@ -3,7 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\WebsiteBadge;
-use App\Services\SettingsService;
+use App\Support\WebsiteSettingRules;
 use Illuminate\Console\Command;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -21,21 +21,9 @@ class ImportBadgeData extends Command
 
     private const BADGE_PREFIX = 'badge_desc_';
 
-    public function __construct(
-        private readonly SettingsService $settingsService,
-    ) {
-        parent::__construct();
-    }
-
     public function handle(): int
     {
-        $jsonPath = $this->settingsService->getOrDefault('nitro_external_texts_file');
-
-        if (! is_string($jsonPath)) {
-            $this->validateJsonFile(null);
-
-            return self::FAILURE;
-        }
+        $jsonPath = WebsiteSettingRules::hotelPath('nitro_external_texts_file');
 
         if (! $this->validateJsonFile($jsonPath)) {
             return self::FAILURE;
@@ -54,10 +42,11 @@ class ImportBadgeData extends Command
         }
     }
 
+    /** @phpstan-assert-if-true string $jsonPath */
     private function validateJsonFile(?string $jsonPath): bool
     {
         if (empty($jsonPath)) {
-            $this->error('The JSON file path is not configured in the website settings.');
+            $this->error('The nitro_external_texts_file setting is empty or outside HOTEL_FILE_ROOTS. See the log for details.');
 
             return false;
         }

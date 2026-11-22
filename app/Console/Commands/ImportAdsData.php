@@ -3,7 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\WebsiteAd;
-use App\Services\SettingsService;
+use App\Support\WebsiteSettingRules;
 use Illuminate\Console\Command;
 use Illuminate\Support\Collection;
 
@@ -17,15 +17,9 @@ class ImportAdsData extends Command
 
     private const ALLOWED_EXTENSIONS = ['jpeg', 'jpg', 'png', 'gif'];
 
-    public function handle(SettingsService $settingsService): int
+    public function handle(): int
     {
-        $adsPath = $settingsService->getOrDefault('ads_path_filesystem');
-
-        if (! is_string($adsPath)) {
-            $this->validatePath(null);
-
-            return self::FAILURE;
-        }
+        $adsPath = WebsiteSettingRules::hotelPath('ads_path_filesystem');
 
         if (! $this->validatePath($adsPath)) {
             return self::FAILURE;
@@ -46,10 +40,11 @@ class ImportAdsData extends Command
         return self::SUCCESS;
     }
 
+    /** @phpstan-assert-if-true string $adsPath */
     private function validatePath(?string $adsPath): bool
     {
         if (empty($adsPath)) {
-            $this->error('Ads path is not configured in website_settings.');
+            $this->error('The ads_path_filesystem setting is empty or outside HOTEL_FILE_ROOTS. See the log for details.');
 
             return false;
         }

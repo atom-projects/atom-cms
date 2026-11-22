@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Badge\BadgePurchaseRequest;
 use App\Services\SettingsService;
 use App\Support\AuthenticatedUser;
+use App\Support\WebsiteSettingRules;
 use Illuminate\Http\JsonResponse;
 use Illuminate\View\View;
 
@@ -14,7 +15,7 @@ class BadgeController extends Controller
 {
     public function show(SettingsService $settingsService): View
     {
-        $error = $this->badgeFolderError($settingsService->getOrDefault('badge_path_filesystem'));
+        $error = $this->badgeFolderError(WebsiteSettingRules::hotelPath('badge_path_filesystem'));
 
         return view('draw-badge', [
             'cost' => (int) $settingsService->getOrDefault('drawbadge_currency_value', 150),

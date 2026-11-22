@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Enums\WebsiteSettingFormat;
+use App\Services\SettingsService;
 use Closure;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
@@ -104,6 +105,29 @@ final class WebsiteSettingRules
         if (! self::accepts($key, $value)) {
             throw ValidationException::withMessages([$key => self::message($key)]);
         }
+    }
+
+    /**
+     * The stored path of a file or folder setting, or null when it is empty or
+     * fails its rule. Every file read, write or delete through these settings
+     * goes through here, so a value stored before the rule existed is refused
+     * and logged instead of used.
+     */
+    public static function hotelPath(string $key, ?string $default = null): ?string
+    {
+        $path = app(SettingsService::class)->getOrDefault($key, $default);
+
+        if (! is_string($path) || $path === '') {
+            return null;
+        }
+
+        if (! self::accepts($key, $path)) {
+            self::reportRefused($key, $path);
+
+            return null;
+        }
+
+        return $path;
     }
 
     /**
