@@ -2,6 +2,7 @@
 
 use App\Emulator\Contracts\RankRepository;
 use App\Filament\Resources\Atom\CmsSettings\Pages\ManageCmsSettings;
+use App\Filament\Resources\Atom\HousekeepingPermissions\Pages\ListHousekeepingPermissions;
 use App\Filament\Resources\Hotel\BadgeTextEditors\Pages\ListBadgeTextEditors;
 use App\Models\Miscellaneous\WebsiteInstallation;
 use App\Models\Miscellaneous\WebsiteSetting;
@@ -681,4 +682,104 @@ test('a housekeeping link on this site is shown as stored', function () {
     writeSettingDirectly('housekeeping_url', '/housekeeping/admin');
 
     expect(WebsiteSettingRules::housekeepingUrl())->toBe('/housekeeping/admin');
+});
+
+/**
+ * Rank 6 manages the housekeeping permissions, but only rank 7 holds the
+ * sensitive settings permission.
+ */
+function permissionsStaff(int $rank): User
+{
+    $staff = settingsStaff($rank);
+
+    WebsiteHousekeepingPermission::query()->updateOrCreate(
+        ['permission' => 'manage_housekeeping_permissions'],
+        ['min_rank' => 6, 'description' => 'Testing manage_housekeeping_permissions'],
+    );
+    app(HousekeepingPermissionsService::class)->refresh();
+
+    return $staff;
+}
+
+function sensitivePermissionRecord(): WebsiteHousekeepingPermission
+{
+    return WebsiteHousekeepingPermission::query()->where('permission', SENSITIVE_SETTINGS_PERMISSION)->firstOrFail();
+}
+
+test('staff without the sensitive settings permission cannot edit its row', function () {
+    $staff = permissionsStaff(6);
+    $record = sensitivePermissionRecord();
+
+    Livewire::test(ListHousekeepingPermissions::class)
+        ->assertActionHidden(TestAction::make('edit')->table($record));
+
+    expect($staff->can('update', $record))->toBeFalse()
+        ->and($record->fresh()->min_rank)->toBe(7)
+        ->and($record->fresh()->permission)->toBe(SENSITIVE_SETTINGS_PERMISSION)
+        ->and($staff->fresh()->can('update', settingRecord('nitro_path')))->toBeFalse();
+});
+
+test('staff without the sensitive settings permission cannot delete its row', function () {
+    $staff = permissionsStaff(6);
+    $record = sensitivePermissionRecord();
+
+    Livewire::test(ListHousekeepingPermissions::class)
+        ->assertActionHidden(TestAction::make('delete')->table($record));
+
+    expect($staff->can('delete', $record))->toBeFalse()
+        ->and(WebsiteHousekeepingPermission::query()->whereKey($record->getKey())->exists())->toBeTrue();
+});
+
+test('staff without the sensitive settings permission cannot create its row', function () {
+    permissionsStaff(6);
+    sensitivePermissionRecord()->delete();
+
+    Livewire::test(ListHousekeepingPermissions::class)
+        ->callAction('create', data: ['permission' => SENSITIVE_SETTINGS_PERMISSION, 'min_rank' => '6', 'description' => 'Testing'])
+        ->assertHasActionErrors(['permission']);
+
+    expect(WebsiteHousekeepingPermission::query()->where('permission', SENSITIVE_SETTINGS_PERMISSION)->exists())->toBeFalse();
+});
+
+test('staff without the sensitive settings permission cannot rename another row to it', function () {
+    permissionsStaff(6);
+    sensitivePermissionRecord()->delete();
+    $record = WebsiteHousekeepingPermission::query()->create(['permission' => 'custom_permission', 'min_rank' => 6, 'description' => 'Testing']);
+
+    Livewire::test(ListHousekeepingPermissions::class)
+        ->callAction(TestAction::make('edit')->table($record), data: ['permission' => SENSITIVE_SETTINGS_PERMISSION, 'min_rank' => '6', 'description' => 'Testing'])
+        ->assertHasActionErrors(['permission']);
+
+    expect(WebsiteHousekeepingPermission::query()->where('permission', SENSITIVE_SETTINGS_PERMISSION)->exists())->toBeFalse()
+        ->and($record->fresh()->permission)->toBe('custom_permission');
+});
+
+test('a holder of the sensitive settings permission can edit its row', function () {
+    $owner = permissionsStaff(7);
+    $record = sensitivePermissionRecord();
+
+    Livewire::test(ListHousekeepingPermissions::class)
+        ->assertActionVisible(TestAction::make('edit')->table($record))
+        ->assertActionVisible(TestAction::make('delete')->table($record))
+        ->callAction(TestAction::make('edit')->table($record), data: ['permission' => SENSITIVE_SETTINGS_PERMISSION, 'min_rank' => '6', 'description' => 'Changed by the owner'])
+        ->assertHasNoActionErrors();
+
+    expect($record->fresh()->min_rank)->toBe(6)
+        ->and($record->fresh()->description)->toBe('Changed by the owner')
+        ->and($owner->can('delete', $record))->toBeTrue();
+});
+
+test('staff with only the housekeeping permissions permission still manage the other rows', function () {
+    permissionsStaff(6);
+    $record = WebsiteHousekeepingPermission::query()->where('permission', 'manage_badges')->firstOrFail();
+
+    Livewire::test(ListHousekeepingPermissions::class)
+        ->callAction(TestAction::make('edit')->table($record), data: ['permission' => 'manage_badges', 'min_rank' => '5', 'description' => 'Changed'])
+        ->assertHasNoActionErrors()
+        ->callAction('create', data: ['permission' => 'custom_permission', 'min_rank' => '6', 'description' => 'Testing'])
+        ->assertHasNoActionErrors()
+        ->callAction(TestAction::make('delete')->table($record));
+
+    expect(WebsiteHousekeepingPermission::query()->where('permission', 'custom_permission')->exists())->toBeTrue()
+        ->and(WebsiteHousekeepingPermission::query()->whereKey($record->getKey())->exists())->toBeFalse();
 });
