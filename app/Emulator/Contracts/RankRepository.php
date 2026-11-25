@@ -31,6 +31,9 @@ interface RankRepository
     /** @return array<int|string, string> */
     public function optionsBelow(int $rank): array;
 
+    /** The lowest rank the emulator itself flags as staff, or null when it has no such flag. */
+    public function lowestStaffRank(): ?int;
+
     /**
      * @param  Builder<Rank>|Relation<Rank, covariant Model, covariant mixed>  $query
      *

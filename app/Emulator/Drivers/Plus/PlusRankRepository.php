@@ -39,6 +39,13 @@ final class PlusRankRepository implements RankRepository
             ->unique('security_level')->pluck('name', 'security_level')->all();
     }
 
+    public function lowestStaffRank(): ?int
+    {
+        $level = PlusRank::query()->where('is_staff', true)->min('security_level');
+
+        return $level === null ? null : (int) $level;
+    }
+
     public function forDisplay(Builder|Relation $query): Builder|Relation
     {
         return $query->select(['id', 'security_level', 'name']);

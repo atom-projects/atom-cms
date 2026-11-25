@@ -11,6 +11,7 @@ use App\Exceptions\ShopPurchaseException;
 use App\Models\Shop\WebsiteShopItem;
 use App\Models\Shop\WebsiteShopPackage;
 use App\Models\User;
+use App\Support\PermissionRanks;
 use RuntimeException;
 
 final readonly class FulfillPackage
@@ -57,6 +58,22 @@ final readonly class FulfillPackage
         }
     }
 
+    /**
+     * Refuse the package when one of its rank items cannot apply to the user.
+     *
+     * @throws ShopPurchaseException
+     */
+    public function ensureRanksApply(User $user, WebsiteShopPackage $package): void
+    {
+        $package->loadMissing('items');
+
+        foreach ($package->items as $item) {
+            if ($item->type === ShopItemType::Rank) {
+                $this->applicableRank($user, $item);
+            }
+        }
+    }
+
     private function giveCurrency(User $user, WebsiteShopItem $item, int $quantity): void
     {
         // type_value format: "credits:100" or "duckets:50".
@@ -97,9 +114,22 @@ final readonly class FulfillPackage
 
     private function giveRank(User $user, WebsiteShopItem $item): void
     {
+        $user->forceFill(['rank' => $this->applicableRank($user, $item)])->save();
+    }
+
+    private function applicableRank(User $user, WebsiteShopItem $item): int
+    {
         $rank = $this->positiveInteger($item, $item->type_value);
 
-        $user->forceFill(['rank' => $rank])->save();
+        if (! array_key_exists($rank, PermissionRanks::grantableRanks())) {
+            throw self::misconfigured($item);
+        }
+
+        if ($user->rank >= $rank) {
+            throw new ShopPurchaseException(__('The account that receives this package already has this rank or a higher one'));
+        }
+
+        return $rank;
     }
 
     private function positiveInteger(WebsiteShopItem $item, string $value): int
