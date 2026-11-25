@@ -35,7 +35,7 @@ final class InstallationSetup
         $values = Validator::make($settings, $this->rules())->validate();
         DB::transaction(function () use ($values): void {
             foreach ($values as $key => $value) {
-                WebsiteSetting::where('key', $key)->update(['value' => (string) $value]);
+                WebsiteSetting::where('key', $key)->first()?->update(['value' => (string) $value]);
             }
         });
         app(SettingsService::class)->refresh();

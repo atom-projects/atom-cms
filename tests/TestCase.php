@@ -69,6 +69,13 @@ abstract class TestCase extends BaseTestCase
         // Tests must not depend on compiled frontend assets (CI never builds them).
         $this->withoutVite();
 
+        // Hotel file fixtures live in the testing storage and the system temp folder.
+        config(['habbo.hotel_file_roots' => [
+            ...(array) config('habbo.hotel_file_roots', []),
+            storage_path('framework/testing'),
+            sys_get_temp_dir(),
+        ]]);
+
         // Never open the emulator socket in tests; disconnected by default so
         // services take their database path.
         $this->rcon = new FakeRcon;

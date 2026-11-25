@@ -48,13 +48,14 @@ class WebsiteInstallation extends Model
      * by, so it is bounded here rather than at each of them. A row that
      * already ran past the last step - an older build let a resubmitted form
      * do that - reads back as the last step and heals itself on the next save.
+     * A missing step reads back as step zero, the key-entry screen.
      *
-     * @return Attribute<int|null, int|null>
+     * @return Attribute<int, int|null>
      */
     protected function step(): Attribute
     {
         return Attribute::make(
-            get: fn (mixed $value): ?int => $value === null ? null : $this->boundStep((int) $value),
+            get: fn (mixed $value): int => $this->boundStep((int) $value),
             set: fn (mixed $value): ?int => $value === null ? null : $this->boundStep((int) $value),
         );
     }

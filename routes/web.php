@@ -3,6 +3,7 @@
 use App\Http\Controllers\Articles\ArticleController;
 use App\Http\Controllers\Articles\WebsiteArticleCommentsController;
 use App\Http\Controllers\Badge\BadgeController;
+use App\Http\Controllers\Client\AirClientController;
 use App\Http\Controllers\Client\ClientController;
 use App\Http\Controllers\Community\LeaderboardController;
 use App\Http\Controllers\Community\PhotosController;
@@ -44,13 +45,15 @@ Route::get('/language/{locale}', LocaleController::class)->name('language.select
 // Installation routes
 Route::prefix('installation')->controller(InstallationController::class)->group(function () {
     Route::get('/', 'index')->name('installation.index');
-    Route::get('/step/{step}', 'showStep')->whereNumber('step')->name('installation.show-step');
-
     Route::post('/start-installation', 'storeInstallationKey')->name('installation.start-installation');
-    Route::post('/restart-installation', 'restartInstallation')->name('installation.restart');
-    Route::post('/previous-step', 'previousStep')->name('installation.previous-step');
-    Route::post('/save-step', 'saveStepSettings')->name('installation.save-step');
-    Route::post('/complete', 'completeInstallation')->name('installation.complete');
+
+    Route::middleware('installation.key')->group(function () {
+        Route::get('/step/{step}', 'showStep')->whereNumber('step')->name('installation.show-step');
+        Route::post('/restart-installation', 'restartInstallation')->name('installation.restart');
+        Route::post('/previous-step', 'previousStep')->name('installation.previous-step');
+        Route::post('/save-step', 'saveStepSettings')->name('installation.save-step');
+        Route::post('/complete', 'completeInstallation')->name('installation.complete');
+    });
 });
 
 // All routes within this group is protected by maintenance, ban and 2FA middleware
@@ -89,10 +92,10 @@ Route::middleware(['maintenance', 'check.ban', 'force.staff.2fa'])->group(functi
             // User settings routes
             Route::prefix('settings')->group(function () {
                 Route::get('/account', [AccountSettingsController::class, 'edit'])->name('settings.account.show');
-                Route::put('/account', [AccountSettingsController::class, 'update'])->name('settings.account.update');
+                Route::put('/account', [AccountSettingsController::class, 'update'])->middleware('throttle:current-password')->name('settings.account.update');
 
                 Route::get('/password', [PasswordSettingsController::class, 'edit'])->name('settings.password.show');
-                Route::put('/password', [PasswordSettingsController::class, 'update'])->name('settings.password.update');
+                Route::put('/password', [PasswordSettingsController::class, 'update'])->middleware('throttle:current-password')->name('settings.password.update');
 
                 Route::get('/session-logs', [AccountSettingsController::class, 'sessionLogs'])->name('settings.session-logs');
 
@@ -211,6 +214,7 @@ Route::middleware(['maintenance', 'check.ban', 'force.staff.2fa'])->group(functi
         Route::prefix('game')->middleware(['findretros.redirect', 'vpn.checker'])->group(function () {
             Route::get('/nitro', ClientController::class)->name('nitro-client')->defaults('client', 'nitro');
             Route::get('/flash', ClientController::class)->name('flash-client')->defaults('client', 'flash');
+            Route::get('/air', AirClientController::class)->name('air-client')->middleware('throttle:10,1');
         });
 
         // Logo generator

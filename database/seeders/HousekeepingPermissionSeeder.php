@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\WebsiteHousekeepingPermission;
 use App\Support\PermissionRanks;
+use App\Support\WebsiteSettingRules;
 use Illuminate\Database\Seeder;
 
 class HousekeepingPermissionSeeder extends Seeder
@@ -185,5 +186,20 @@ class HousekeepingPermissionSeeder extends Seeder
                 'description' => $permission['description'],
             ]);
         }
+
+        $topRank = PermissionRanks::top();
+
+        if ($topRank === null) {
+            if (isset($this->command)) {
+                $this->command->warn(WebsiteSettingRules::SENSITIVE_PERMISSION_SKIPPED);
+            }
+
+            return;
+        }
+
+        WebsiteHousekeepingPermission::query()->firstOrCreate(['permission' => WebsiteSettingRules::SENSITIVE_PERMISSION], [
+            'min_rank' => $topRank,
+            'description' => 'The minimum rank required before being able to change the client, file path, RCON and staff two-factor website settings',
+        ]);
     }
 }

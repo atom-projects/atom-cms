@@ -42,7 +42,7 @@ class WebsiteAdResource extends Resource
                         'required' => 'Please upload an image.', 'image' => 'The file must be a valid image.', 'mimes' => 'Only JPEG, PNG, JPG, and GIF images are allowed.'])
                     ->required()
                     ->getUploadedFileNameForStorageUsing(
-                        fn (TemporaryUploadedFile $file): string => Str::ulid() . '.' . $file->getClientOriginalExtension(),
+                        fn (TemporaryUploadedFile $file): string => Str::ulid() . '.' . $file->guessExtension(),
                     ),
             ]);
     }

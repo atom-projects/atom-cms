@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\WebsiteSettingRules;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -12,7 +13,14 @@ class SecurityHeaders
     {
         $response = $next($request);
 
-        $response->headers->set('Content-Security-Policy', "base-uri 'self'; frame-ancestors 'self'");
+        $policy = "base-uri 'self'; frame-ancestors 'self'";
+
+        // The client frame URL carries the login ticket, so it may only load allowed origins.
+        if ($request->routeIs('nitro-client')) {
+            $policy .= "; frame-src 'self' " . implode(' ', WebsiteSettingRules::clientOrigins());
+        }
+
+        $response->headers->set('Content-Security-Policy', $policy);
         $response->headers->set('Permissions-Policy', 'accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()');
         $response->headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
         $response->headers->set('X-Content-Type-Options', 'nosniff');

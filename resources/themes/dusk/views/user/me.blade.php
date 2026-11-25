@@ -2,7 +2,7 @@
     @push('title', __('Welcome to the best hotel on the web!'))
 
 
-    <div class="col-span-12 md:col-span-8 h-[250px] bg-gray-900/50 rounded-xl flex lg:px-8 py-8 items-center text-white relative overflow-hidden">
+    <div class="col-span-12 md:col-span-8 min-h-[250px] lg:h-[250px] bg-gray-900/50 rounded-xl flex lg:px-8 pt-8 pb-24 lg:py-8 items-center text-white relative overflow-hidden">
         <div class="block lg:hidden w-40">
             <a href="{{ route('home.show', $user) }}"
                class="absolute bottom-2 -left-4 lg:left-8 drop-shadow transition duration-300 ease-in-out hover:scale-105">
@@ -40,6 +40,14 @@
                        {{ __('Go to :hotel', ['hotel' => setting('hotel_name')]) }}
                    </button>
                </a>
+
+               @if (config('habbo.client.air_enabled'))
+                   <a href="{{ route('air-client') }}" class="block mt-2">
+                       <button type="button" class="w-full text-white bg-blue-500 border-2 border-blue-400 rounded transition duration-300 ease-in-out hover:scale-[102%] py-2 px-4">
+                           {{ __('Open AIR client') }}
+                       </button>
+                   </a>
+               @endif
            </div>
         </div>
 

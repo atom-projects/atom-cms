@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Models\WebsiteDrawBadge;
 use App\Rules\ValidGifBadge;
 use App\Services\SettingsService;
+use App\Support\WebsiteSettingRules;
 use ErrorException;
 use GdImage;
 use Illuminate\Support\Facades\DB;
@@ -54,9 +55,9 @@ class CreateDrawnBadge
 
     private function storeImage(User $user, ?string $bytes): string
     {
-        $directory = $this->settings->getOrDefault('badge_path_filesystem');
+        $directory = WebsiteSettingRules::hotelPath('badge_path_filesystem');
 
-        if (! is_string($directory) || $directory === '' || ! is_dir($directory) || ! is_writable($directory) || $bytes === null) {
+        if ($directory === null || ! is_dir($directory) || ! is_writable($directory) || $bytes === null) {
             throw BadgePurchaseException::pathNotConfigured();
         }
 
