@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Atom\HousekeepingPermissions;
 use App\Filament\Resources\Atom\HousekeepingPermissions\Pages\ListHousekeepingPermissions;
 use App\Filament\Support\TruncatedTooltip;
 use App\Models\WebsiteHousekeepingPermission;
+use Closure;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\TextInput;
@@ -39,7 +40,12 @@ class HousekeepingPermissionResource extends Resource
                             ->maxLength(50)
                             ->autocomplete()
                             ->unique(ignoreRecord: true)
-                            ->required(),
+                            ->required()
+                            ->rule(fn (): Closure => function (string $attribute, mixed $value, Closure $fail): void {
+                                if (is_string($value) && ! (auth()->user()?->can('useName', [WebsiteHousekeepingPermission::class, $value]) ?? false)) {
+                                    $fail('Only the highest staff rank may manage this permission.');
+                                }
+                            }),
 
                         TextInput::make('min_rank')
                             ->label(__('filament::resources.inputs.min_rank'))

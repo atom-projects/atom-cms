@@ -28,12 +28,23 @@ final class PermissionRanks
 
     public static function ceiling(): int
     {
+        // Never let seeding or migrating fail because the emulator schema is
+        // not up yet.
+        return self::top() ?? self::STAFF_RANK;
+    }
+
+    /**
+     * The top rank, or null when the emulator schema cannot be read or has no
+     * ranks. Use it for a permission that must not go to a guessed rank.
+     */
+    public static function top(): ?int
+    {
         try {
-            return max(self::STAFF_RANK, app(RankRepository::class)->highestRank());
+            $highest = app(RankRepository::class)->highestRank();
         } catch (Throwable) {
-            // Never let seeding or migrating fail because the emulator schema
-            // is not up yet.
-            return self::STAFF_RANK;
+            return null;
         }
+
+        return $highest > 0 ? max(self::STAFF_RANK, $highest) : null;
     }
 }

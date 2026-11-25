@@ -3,7 +3,7 @@
 namespace App\Observers;
 
 use App\Models\WebsiteAd;
-use App\Services\SettingsService;
+use App\Support\WebsiteSettingRules;
 use Illuminate\Support\Facades\Storage;
 use Throwable;
 
@@ -20,14 +20,16 @@ class WebsiteAdObserver
             return;
         }
 
+        $root = WebsiteSettingRules::hotelPath('ads_path_filesystem');
+
+        if ($root === null) {
+            logger()->error('Ad image file was not deleted: ads_path_filesystem is empty or outside HOTEL_FILE_ROOTS', ['file' => $websiteAd->image]);
+
+            return;
+        }
+
         try {
-            $disk = Storage::build([
-                'driver' => 'local',
-                'root' => (string) app(SettingsService::class)->getOrDefault(
-                    'ads_path_filesystem',
-                    config('filesystems.disks.ads.root'),
-                ),
-            ]);
+            $disk = Storage::build(['driver' => 'local', 'root' => $root]);
 
             if ($disk->exists($websiteAd->image)) {
                 $disk->delete($websiteAd->image);

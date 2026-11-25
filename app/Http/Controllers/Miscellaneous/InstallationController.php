@@ -11,7 +11,7 @@ use App\Services\InstallationSetup;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
 
@@ -116,20 +116,20 @@ class InstallationController extends Controller
         $essential = array_intersect_key($request->only($allowedKeys->all()), $shared->rules());
         $shared->configure($essential);
 
-        foreach ($request->except('_token') as $key => $value) {
-            if (array_key_exists($key, $shared->rules())) {
-                continue;
-            }
-            if (! $allowedKeys->contains($key) || (! is_string($value) && $value !== null)) {
-                continue;
-            }
+        DB::transaction(function () use ($request, $shared, $allowedKeys): void {
+            foreach ($request->except('_token') as $key => $value) {
+                if (array_key_exists($key, $shared->rules())) {
+                    continue;
+                }
+                if (! $allowedKeys->contains($key) || (! is_string($value) && $value !== null)) {
+                    continue;
+                }
 
-            WebsiteSetting::where('key', '=', $key)->update([
-                'value' => $value ?? '',
-            ]);
-        }
-
-        // Cache will be automatically cleared by WebsiteSetting model events
+                WebsiteSetting::where('key', '=', $key)->first()?->update([
+                    'value' => $value ?? '',
+                ]);
+            }
+        });
     }
 
     private function installation(): WebsiteInstallation

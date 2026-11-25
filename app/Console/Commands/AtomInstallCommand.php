@@ -4,8 +4,10 @@ namespace App\Console\Commands;
 
 use App\Console\Commands\Concerns\ReadsStringInputs;
 use App\Emulator\EmulatorManager;
+use App\Models\WebsiteHousekeepingPermission;
 use App\Services\OperatingMode;
 use App\Support\EnvironmentFile;
+use App\Support\WebsiteSettingRules;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Process;
@@ -101,6 +103,10 @@ class AtomInstallCommand extends Command
             $this->callSilent('db:seed', ['--force' => true]);
         }, 'Running migrations and seeders...');
         info('Migrations and seeders completed.');
+
+        if (! WebsiteHousekeepingPermission::query()->where('permission', WebsiteSettingRules::SENSITIVE_PERMISSION)->exists()) {
+            warning(WebsiteSettingRules::SENSITIVE_PERMISSION_SKIPPED);
+        }
 
         if ($headless) {
             if ($this->call('atom:setup', array_filter(['--complete' => true, '--settings' => $this->option('settings'), '--admin' => $this->option('admin')], fn ($value) => $value !== null)) !== self::SUCCESS) {

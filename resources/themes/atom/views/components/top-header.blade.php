@@ -38,7 +38,7 @@
                     @endif
 
                     @if(hasPermission('housekeeping_access'))
-                        <a data-turbolinks="false" href="{{ setting('housekeeping_url') }}" target="_blank" class="dropdown-item dark:text-gray-200 dark:hover:bg-gray-700">
+                        <a data-turbolinks="false" href="{{ \App\Support\WebsiteSettingRules::housekeepingUrl() }}" target="_blank" class="dropdown-item dark:text-gray-200 dark:hover:bg-gray-700">
                             {{ __('Housekeeping') }}
                         </a>
                     @endif
