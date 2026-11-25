@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Miscellaneous;
 
 use App\Http\Controllers\Controller;
+use App\Http\Middleware\EnsureInstallationKeyAccepted;
 use App\Models\Miscellaneous\WebsiteInstallation;
 use App\Models\Miscellaneous\WebsiteSetting;
 use App\Rules\ValidateInstallationKeyRule;
@@ -16,8 +17,14 @@ use Illuminate\View\View;
 
 class InstallationController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View|RedirectResponse
     {
+        $step = $this->installation()->step;
+
+        if ($step >= WebsiteInstallation::FIRST_STEP && EnsureInstallationKeyAccepted::isAccepted($request)) {
+            return to_route('installation.show-step', $step);
+        }
+
         return view('installation.index');
     }
 
@@ -27,12 +34,15 @@ class InstallationController extends Controller
             'installation_key' => ['required', 'string', 'max:255', new ValidateInstallationKeyRule],
         ]);
 
-        $this->installation()->update([
-            'step' => 1,
+        $installation = $this->installation();
+        $installation->update([
+            'step' => max(WebsiteInstallation::FIRST_STEP, $installation->step),
             'user_ip' => $request->ip(),
         ]);
 
-        return to_route('installation.show-step', 1);
+        EnsureInstallationKeyAccepted::accept($request, $request->string('installation_key')->toString());
+
+        return to_route('installation.show-step', $installation->step);
     }
 
     public function showStep(int $currentStep): View|RedirectResponse

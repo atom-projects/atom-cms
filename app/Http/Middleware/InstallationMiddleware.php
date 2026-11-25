@@ -86,7 +86,6 @@ class InstallationMiddleware
                 'step' => 0,
                 'completed' => false,
                 'installation_key' => Str::uuid(),
-                'user_ip' => request()->ip(),
             ]);
 
             if ($installation->completed) {
@@ -108,16 +107,18 @@ class InstallationMiddleware
             return true;
         }
 
-        if ($this->isWelcomeStep($request, $installation)) {
+        if ($this->isInvalidAccess($request, $installation)) {
+            abort(403);
+        }
+
+        // The key page stays open during the wizard so a session that lost
+        // its key acceptance can enter the key again.
+        if ($this->isWelcomeStep($request)) {
             return true;
         }
 
         if ($this->isRedirectToWelcome($request, $installation)) {
             return false;
-        }
-
-        if ($this->isInvalidAccess($request, $installation)) {
-            abort(403);
         }
 
         if ($this->isInvalidStep($request)) {
@@ -131,14 +132,19 @@ class InstallationMiddleware
         return true;
     }
 
-    private function isWelcomeStep(Request $request, WebsiteInstallation $installation): bool
+    private function isWelcomeStep(Request $request): bool
     {
-        return $installation->step === 0 && $request->getRequestUri() === '/installation';
+        return $request->getRequestUri() === '/installation';
     }
 
     private function isRedirectToWelcome(Request $request, WebsiteInstallation $installation): bool
     {
-        return $installation->step === 0 && $request->getRequestUri() !== '/installation' && $request->method() !== 'POST';
+        return $installation->step === 0 && ! $this->isKeySubmission($request);
+    }
+
+    private function isKeySubmission(Request $request): bool
+    {
+        return $request->isMethod('POST') && $request->is('installation/start-installation');
     }
 
     private function isInvalidAccess(Request $request, WebsiteInstallation $installation): bool

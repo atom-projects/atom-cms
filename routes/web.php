@@ -45,13 +45,15 @@ Route::get('/language/{locale}', LocaleController::class)->name('language.select
 // Installation routes
 Route::prefix('installation')->controller(InstallationController::class)->group(function () {
     Route::get('/', 'index')->name('installation.index');
-    Route::get('/step/{step}', 'showStep')->whereNumber('step')->name('installation.show-step');
-
     Route::post('/start-installation', 'storeInstallationKey')->name('installation.start-installation');
-    Route::post('/restart-installation', 'restartInstallation')->name('installation.restart');
-    Route::post('/previous-step', 'previousStep')->name('installation.previous-step');
-    Route::post('/save-step', 'saveStepSettings')->name('installation.save-step');
-    Route::post('/complete', 'completeInstallation')->name('installation.complete');
+
+    Route::middleware('installation.key')->group(function () {
+        Route::get('/step/{step}', 'showStep')->whereNumber('step')->name('installation.show-step');
+        Route::post('/restart-installation', 'restartInstallation')->name('installation.restart');
+        Route::post('/previous-step', 'previousStep')->name('installation.previous-step');
+        Route::post('/save-step', 'saveStepSettings')->name('installation.save-step');
+        Route::post('/complete', 'completeInstallation')->name('installation.complete');
+    });
 });
 
 // All routes within this group is protected by maintenance, ban and 2FA middleware
