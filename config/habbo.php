@@ -50,6 +50,7 @@ return [
     'rcon' => [
         'connect_timeout_seconds' => (float) env('RCON_CONNECT_TIMEOUT', 1),
         'read_timeout_seconds' => (float) env('RCON_READ_TIMEOUT', 2),
+        'secret' => env('RCON_SECRET'),
     ],
 
     'client' => [
