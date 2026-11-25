@@ -27,6 +27,16 @@ test('the logo generator is permission gated', function () {
         ->assertOk();
 });
 
+test('the logo generator draws logos without html2canvas', function (string $theme) {
+    setSetting('theme', $theme);
+
+    $this->actingAs(User::factory()->create(['rank' => 7]))
+        ->get(route('logo-generator.index'))
+        ->assertOk()
+        ->assertSee('context.drawImage(', false)
+        ->assertDontSee('html2canvas');
+})->with(['atom', 'dusk']);
+
 test('guests are redirected off account pages', function () {
     $this->get(route('settings.account.show'))->assertRedirect();
 });
