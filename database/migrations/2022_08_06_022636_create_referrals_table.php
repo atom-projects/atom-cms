@@ -10,12 +10,12 @@ return new class extends Migration
     {
         Schema::create('referrals', function (Blueprint $table) {
             $table->id();
-            $table->integer('user_id')->index();
+            $table->playerId('user_id')->index();
             $table->unsignedBigInteger('referred_user_id');
             $table->string('referred_user_ip');
             $table->timestamps();
 
-            $table->foreign('user_id')->references('id')->on('users')->cascadeOnDelete();
+            $table->foreignPlayer('user_id')->cascadeOnDelete();
         });
     }
 

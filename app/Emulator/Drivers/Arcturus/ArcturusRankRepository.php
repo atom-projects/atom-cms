@@ -20,6 +20,11 @@ class ArcturusRankRepository implements RankRepository
         return 'rank_name';
     }
 
+    public function userKey(): string
+    {
+        return 'rank';
+    }
+
     public function highestRank(): int
     {
         return (int) Permission::query()->max('id');
@@ -31,6 +36,11 @@ class ArcturusRankRepository implements RankRepository
             ->where('id', '<', $rank)
             ->pluck('rank_name', 'id')
             ->all();
+    }
+
+    public function lowestStaffRank(): ?int
+    {
+        return null;
     }
 
     public function forDisplay(Builder|Relation $query): Builder|Relation

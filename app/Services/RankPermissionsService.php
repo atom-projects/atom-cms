@@ -38,13 +38,16 @@ abstract class RankPermissionsService
 
     public function allows(User $user, string $permissionName, bool $default = false): bool
     {
+        $minRank = $this->minRank($permissionName);
+
+        return $minRank === null ? $default : $user->rank >= $minRank;
+    }
+
+    public function minRank(string $permissionName): ?int
+    {
         $permissions = $this->permissions();
 
-        if (! $permissions->has($permissionName)) {
-            return $default;
-        }
-
-        return $user->rank >= (int) $permissions->get($permissionName);
+        return $permissions->has($permissionName) ? (int) $permissions->get($permissionName) : null;
     }
 
     /**

@@ -62,6 +62,7 @@ class WebsiteShopPackageResource extends Resource
 
                         FileUpload::make('image')
                             ->image()
+                            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/gif', 'image/webp'])
                             ->directory('shop-packages')
                             ->visibility('public'),
 

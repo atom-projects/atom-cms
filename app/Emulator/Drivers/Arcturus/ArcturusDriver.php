@@ -16,6 +16,7 @@ use App\Emulator\Contracts\RankRepository;
 use App\Emulator\Contracts\RoomRepository;
 use App\Emulator\Data\Feature;
 use App\Emulator\Data\PlayerConstraints;
+use App\Emulator\Data\PlayerSchema;
 use App\Emulator\Data\SchemaFeature;
 use App\Filament\Resources\User\Users\RelationManagers\BadgesRelationManager;
 use App\Filament\Resources\User\Users\RelationManagers\ChatLogPrivateRelationManager;
@@ -63,6 +64,16 @@ final class ArcturusDriver implements EmulatorDriver
     public function playerConstraints(): PlayerConstraints
     {
         return new PlayerConstraints(25, 255, 127, 256);
+    }
+
+    public function passwordHashing(): string
+    {
+        return 'bcrypt';
+    }
+
+    public function playerSchema(): PlayerSchema
+    {
+        return new PlayerSchema;
     }
 
     public function installer(): EmulatorInstaller

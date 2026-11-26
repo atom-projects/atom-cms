@@ -15,6 +15,7 @@ return [
     |
     */
 
+    // Replaced at boot by the active emulator driver's passwordHashing().
     'driver' => 'bcrypt',
 
     /*

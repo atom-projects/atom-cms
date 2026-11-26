@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Providers\RouteServiceProvider;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Testing\TestResponse;
 
 function register(array $overrides = []): TestResponse
@@ -74,6 +75,32 @@ test('the discord webhook is dispatched after the response', function () {
     register()->assertRedirect();
 
     Bus::assertDispatchedAfterResponse(SendRegisteredUserWebhook::class);
+});
+
+test('the discord webhook cannot mention anyone or format visitor text', function () {
+    installHotel();
+    setSetting('enable_discord_webhook', '1');
+    setSetting('discord_webhook_url', 'https://discord.com/api/webhooks/123/token_value');
+    Http::fake(['discord.com/*' => Http::response(status: 204)]);
+
+    register(['mail' => '"@everyone`**[x](https://e.t)**_~|<>"@example.com'])->assertRedirect(RouteServiceProvider::HOME);
+
+    Http::assertSentCount(1);
+    Http::assertSent(fn ($request) => $request->url() === 'https://discord.com/api/webhooks/123/token_value'
+        && $request['allowed_mentions'] === ['parse' => []]
+        && $request['content'] === 'User: `Tester` has just registered, with the IP: `127.0.0.1` and E-mail: `"@everyone**[x](https://e.t)**_~|<>"@example.com`');
+});
+
+test('the discord webhook keeps line separators and tabs in the email out of the message', function () {
+    installHotel();
+    setSetting('enable_discord_webhook', '1');
+    setSetting('discord_webhook_url', 'https://discord.com/api/webhooks/123/token_value');
+    Http::fake(['discord.com/*' => Http::response(status: 204)]);
+
+    register(['mail' => "\"a\u{2028}b\\\tc\"@example.com"])->assertRedirect(RouteServiceProvider::HOME);
+
+    Http::assertSentCount(1);
+    Http::assertSent(fn ($request) => $request['content'] === 'User: `Tester` has just registered, with the IP: `127.0.0.1` and E-mail: `"a b\ c"@example.com`');
 });
 
 test('a required beta code cannot be omitted or reused', function () {
@@ -161,4 +188,56 @@ test('an enabled turnstile without configured keys does not block registration',
     register()->assertRedirect(RouteServiceProvider::HOME);
 
     $this->assertAuthenticated();
+});
+
+test('enabled recaptcha rejects missing or malformed registration tokens without making a verification request', function (array $input) {
+    installHotel();
+    setSetting('google_recaptcha_enabled', '1');
+    Http::preventStrayRequests();
+
+    register($input)->assertSessionHasErrors('g-recaptcha-response');
+
+    $this->assertGuest();
+    expect(User::where('username', 'Tester')->exists())->toBeFalse();
+    Http::assertNothingSent();
+})->with([
+    'omitted' => [[]],
+    'blank' => [['g-recaptcha-response' => '   ']],
+    'non-string' => [['g-recaptcha-response' => ['unexpected']]],
+]);
+
+test('a verified recaptcha allows registration', function () {
+    installHotel();
+    setSetting('google_recaptcha_enabled', '1');
+    config()->set('habbo.site.recaptcha_secret_key', 'test-secret');
+    Http::fake(['www.google.com/recaptcha/api/siteverify' => Http::response(['success' => true])]);
+
+    register(['g-recaptcha-response' => 'verified-token'])->assertRedirect(RouteServiceProvider::HOME);
+
+    $this->assertAuthenticated();
+    Http::assertSent(fn ($request) => $request->url() === 'https://www.google.com/recaptcha/api/siteverify'
+        && $request['secret'] === 'test-secret'
+        && $request['response'] === 'verified-token');
+});
+
+test('a rejected recaptcha prevents registration', function () {
+    installHotel();
+    setSetting('google_recaptcha_enabled', '1');
+    Http::fake(['www.google.com/recaptcha/api/siteverify' => Http::response(['success' => false])]);
+
+    register(['g-recaptcha-response' => 'rejected-token'])->assertSessionHasErrors('g-recaptcha-response');
+
+    $this->assertGuest();
+    expect(User::where('username', 'Tester')->exists())->toBeFalse();
+});
+
+test('disabled recaptcha allows registration without contacting Google', function () {
+    installHotel();
+    setSetting('google_recaptcha_enabled', '0');
+    Http::preventStrayRequests();
+
+    register()->assertRedirect(RouteServiceProvider::HOME);
+
+    $this->assertAuthenticated();
+    Http::assertNothingSent();
 });

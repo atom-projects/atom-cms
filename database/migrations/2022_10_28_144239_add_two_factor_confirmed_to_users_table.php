@@ -8,8 +8,9 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (! Schema::hasColumn('users', 'two_factor_confirmed')) {
-            Schema::table('users', function (Blueprint $table) {
+        $users = cmsUserTable();
+        if (! Schema::hasColumn($users, 'two_factor_confirmed')) {
+            Schema::table($users, function (Blueprint $table) {
                 $table->boolean('two_factor_confirmed')
                     ->after('two_factor_recovery_codes')
                     ->default(false);
@@ -19,7 +20,8 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::table('users', function (Blueprint $table) {
+        $users = cmsUserTable();
+        Schema::table($users, function (Blueprint $table) {
             $table->dropColumn('two_factor_confirmed');
         });
     }

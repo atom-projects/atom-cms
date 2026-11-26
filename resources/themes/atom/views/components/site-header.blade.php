@@ -1,3 +1,4 @@
+@inject('onlineUsers', 'App\Services\User\UserApiService')
 <div class="relative flex h-52 w-full items-center justify-center header-bg"
     style="background: url({{ setting('cms_header') }});">
     <div class="absolute h-full w-full bg-black/50"></div>
@@ -15,13 +16,13 @@
                     <div class="absolute -left-1 h-6 w-6 rotate-45 bg-white dark:bg-gray-900"></div>
 
                     <span class="relative">
-                        {{ __(':online :hotel online', ['online' => DB::table('users')->where('online', '1')->count(),'hotel' => setting('hotel_name')]) }}
+                        {{ __(':online :hotel online', ['online' => $onlineUsers->onlineUserCount(),'hotel' => setting('hotel_name')]) }}
                     </span>
                 </div>
             </div>
 
             <flex class="flex gap-x-4">
-                <a data-turbolinks="false" href="{{ route('nitro-client') }}">
+                <a data-turbolinks="false" href="{{ route('nitro-client') }}" target="hotel-client">
                     <button
                         class="relative hidden rounded-full bg-white/90 px-6 py-2 text-lg font-semibold text-black transition duration-300 ease-in-out hover:bg-white dark:bg-gray-900 dark:text-white md:block">
                         {{ __('Nitro client') }}
@@ -33,6 +34,15 @@
                         <button
                             class="relative hidden rounded-full bg-white/90 px-6 py-2 text-lg font-semibold text-black transition duration-300 ease-in-out hover:bg-white dark:bg-gray-900 dark:text-white md:block">
                             {{ __('Flash client') }}
+                        </button>
+                    </a>
+                @endif
+
+                @if (config('habbo.client.air_enabled'))
+                    <a data-turbolinks="false" href="{{ route('air-client') }}">
+                        <button
+                            class="relative hidden rounded-full bg-white/90 px-6 py-2 text-lg font-semibold text-black transition duration-300 ease-in-out hover:bg-white dark:bg-gray-900 dark:text-white md:block">
+                            {{ __('AIR client') }}
                         </button>
                     </a>
                 @endif

@@ -16,6 +16,7 @@ use App\Emulator\Contracts\RankRepository;
 use App\Emulator\Contracts\RoomRepository;
 use App\Emulator\Data\Feature;
 use App\Emulator\Data\PlayerConstraints;
+use App\Emulator\Data\PlayerSchema;
 use App\Filament\Resources\User\Users\RelationManagers\AdaBadgesRelationManager;
 use App\Services\UnsupportedRcon;
 
@@ -66,6 +67,46 @@ final class AdaDriver implements EmulatorDriver
     public function playerConstraints(): PlayerConstraints
     {
         return new PlayerConstraints(50, 50, 50, 200);
+    }
+
+    public function passwordHashing(): string
+    {
+        return 'bcrypt';
+    }
+
+    /**
+     * Ada's player row is players (BIGINT ids). The rest of what Atom calls a
+     * user Ada normalises into one-to-one tables keyed by player_id, and a
+     * player's rank is their highest role.
+     */
+    public function playerSchema(): PlayerSchema
+    {
+        $select = fn (string $table, string $column): string => "(SELECT `{$table}`.`{$column}` FROM `{$table}` WHERE `{$table}`.`player_id` = `players`.`id` LIMIT 1)";
+        $of = fn (string $table, string $column, string $default): string => 'COALESCE(' . $select($table, $column) . ", {$default})";
+        $unix = fn (string $table, string $column): string => 'COALESCE(UNIX_TIMESTAMP(' . $select($table, $column) . '), 0)';
+
+        return new PlayerSchema(
+            table: 'players',
+            keyType: 'bigInteger',
+            columns: ['mail' => 'email', 'account_created' => 'created_at'],
+            derived: [
+                'look' => $of('player_avatar_data', 'figure_code', "''"),
+                'motto' => $of('player_avatar_data', 'motto', "''"),
+                'gender' => $of('player_avatar_data', 'gender', "'M'"),
+                'credits' => $of('player_data', 'credit_balance', '0'),
+                'pixels' => $of('player_data', 'pixel_balance', '0'),
+                'points' => $of('player_data', 'gotw_points', '0'),
+                'home_room' => $of('player_data', 'home_room_id', '0'),
+                'online' => $of('player_data', 'is_online', '0'),
+                'last_online' => $unix('player_data', 'last_online'),
+                'last_login' => $unix('player_website_data', 'last_login'),
+                'ip_register' => $of('player_website_data', 'initial_ip', "''"),
+                'ip_current' => $of('player_website_data', 'last_ip', "''"),
+                'rank' => 'COALESCE((SELECT MAX(`player_role`.`role_id`) FROM `player_role` WHERE `player_role`.`player_id` = `players`.`id`), 1)',
+            ],
+            derivedCasts: ['look' => 'string', 'motto' => 'string', 'gender' => 'string', 'ip_register' => 'string', 'ip_current' => 'string', 'online' => 'boolean'],
+            timestamps: ['account_created'],
+        );
     }
 
     public function installer(): EmulatorInstaller

@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\User;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -16,11 +17,11 @@ return new class extends Migration
         $this->removeDuplicateTags();
 
         Schema::table('website_article_reactions', function (Blueprint $table) {
-            $table->integer('user_id')->change();
+            $table->playerId('user_id')->change();
         });
 
         Schema::table('website_article_reactions', function (Blueprint $table) {
-            $table->foreign('user_id')->references('id')->on('users')->cascadeOnDelete();
+            $table->foreignPlayer('user_id')->cascadeOnDelete();
             $table->unique(['user_id', 'article_id', 'reaction'], 'article_reactions_user_article_reaction_unique');
         });
 
@@ -69,17 +70,18 @@ return new class extends Migration
         });
 
         Schema::table('website_article_reactions', function (Blueprint $table) {
-            $table->unsignedInteger('user_id')->change();
+            $table->playerId('user_id')->change();
         });
     }
 
     private function removeOrphans(): void
     {
+        $users = (new User)->getTable();
         DB::table('website_article_reactions')
-            ->whereNotExists(function ($query) {
+            ->whereNotExists(function ($query) use ($users) {
                 $query->selectRaw('1')
-                    ->from('users')
-                    ->whereColumn('users.id', 'website_article_reactions.user_id');
+                    ->from($users)
+                    ->whereColumn("{$users}.id", 'website_article_reactions.user_id');
             })
             ->delete();
 

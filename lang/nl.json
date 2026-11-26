@@ -243,6 +243,8 @@
     "Discord": "Discord",
     ":online :hotel online": ":online :hotel online",
     "Flash client": "Flash-client",
+    "AIR client": "AIR-client",
+    "Open AIR client": "AIR-client openen",
     "Ban type:": "Type ban:",
     "Ban reason:": "Reden van ban:",
     "Ban expiration:": "Ban verloopt op:",
@@ -546,5 +548,17 @@
     "Swedish": "Zweeds",
     "Thank you for playing :hotel. We have put a lot of effort into making the hotel what it is, and we truly appreciate you being here": "Bedankt dat je op :hotel speelt. We hebben veel moeite gestoken in het hotel zoals het nu is, en we waarderen het echt dat je er bent",
     "Translations": "Vertalingen",
-    "Turkish": "Turks"
+    "Turkish": "Turks",
+    ":hotel teams": ":hotel teams",
+    "About the :hotel teams": "Over de :hotel teams",
+    "Our community teams bring players together to host events, help others, and make :hotel a fun place to be.": "Onze community teams brengen spelers samen om evenementen te organiseren, anderen te helpen en van :hotel een leuke plek te maken.",
+    "Each team has its own role in the community. Meet the members above and discover how they contribute to :hotel!": "Elk team heeft zijn eigen rol in de community. Ontmoet de leden hierboven en ontdek hoe ze bijdragen aan :hotel!",
+    "Apply for teams": "Solliciteer voor een team",
+    "How to join a team": "Hoe je lid wordt van een team",
+    "We open team applications periodically. If you would like to help out at :hotel, keep an eye on the news for opportunities to join a team.": "We openen regelmatig teamsollicitaties. Wil je helpen bij :hotel, houd dan het nieuws in de gaten voor kansen om bij een team te komen.",
+    "Visit the :startTag Team application page :endTag to see which teams are currently recruiting.": "Bezoek de :startTag pagina met teamsollicitaties :endTag om te zien welke teams nu leden zoeken.",
+    "We currently have no members in this team": "Dit team heeft momenteel geen leden",
+    "No teams found": "Geen teams gevonden",
+    "Please check back later.": "Kom later nog eens terug.",
+    "There are no teams to display right now.": "Er zijn op dit moment geen teams om te tonen."
 }

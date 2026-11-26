@@ -750,5 +750,6 @@ return [
         'select_all' => 'Selecionar Todos',
         'deselect_all' => 'Desmarcar Todos',
         'send_notifications' => 'Enviar Notificações',
+        'generate_password' => 'Gerar senha',
     ]
 ];

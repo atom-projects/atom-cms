@@ -4,6 +4,7 @@ namespace App\Emulator;
 
 use App\Emulator\Data\Feature;
 use App\Emulator\Data\PlayerConstraints;
+use App\Emulator\Data\PlayerSchema;
 use App\Emulator\Data\SchemaFeature;
 use Filament\Resources\RelationManagers\RelationGroup;
 use Filament\Resources\RelationManagers\RelationManager;
@@ -32,6 +33,11 @@ class Emulator
     public static function constraints(): PlayerConstraints
     {
         return self::manager()->active()->playerConstraints();
+    }
+
+    public static function playerSchema(): PlayerSchema
+    {
+        return self::manager()->active()->playerSchema();
     }
 
     /** @return list<class-string<RelationManager>|RelationGroup|RelationManagerConfiguration> */

@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Http\Controllers\Api\AvatarImageController;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Foundation\Support\Providers\RouteServiceProvider as ServiceProvider;
 use Illuminate\Http\Request;
@@ -27,12 +28,20 @@ class RouteServiceProvider extends ServiceProvider
         $this->configureRateLimiting();
 
         $this->routes(function () {
+            Route::get('api/avatar-image', AvatarImageController::class)->middleware('throttle:avatar-images')->name('api.avatar-image');
+
             Route::middleware('api')
                 ->prefix('api')
                 ->group(base_path('routes/api.php'));
 
-            Route::middleware('web')
-                ->group(base_path('routes/web.php'));
+            Route::middleware('api')->prefix('api/v1')->as('api.v1.')
+                ->group(base_path('routes/api/v1.php'));
+
+            Route::middleware('web')->group(base_path('routes/shared.php'));
+
+            if (config('atom.mode') === 'full') {
+                Route::middleware('web')->group(base_path('routes/web.php'));
+            }
         });
     }
 
@@ -41,6 +50,8 @@ class RouteServiceProvider extends ServiceProvider
      */
     protected function configureRateLimiting(): void
     {
+        RateLimiter::for('avatar-images', fn (Request $request) => Limit::perMinute(300)->by($request->ip()));
+
         RateLimiter::for('api', function (Request $request) {
             return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
         });

@@ -8,24 +8,26 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (! Schema::hasColumn('users', 'team_id')) {
-            Schema::table('users', function (Blueprint $table) {
+        $users = cmsUserTable();
+        if (! Schema::hasColumn($users, 'team_id')) {
+            Schema::table($users, function (Blueprint $table) {
                 $table->unsignedBigInteger('team_id')->nullable();
             });
         }
 
-        dropForeignKeyIfExists('users', 'team_id');
+        dropForeignKeyIfExists($users, 'team_id');
 
-        Schema::table('users', function (Blueprint $table) {
+        Schema::table($users, function (Blueprint $table) {
             $table->foreign('team_id')->references('id')->on('website_teams')->nullOnDelete();
         });
     }
 
     public function down(): void
     {
-        dropForeignKeyIfExists('users', 'team_id');
+        $users = cmsUserTable();
+        dropForeignKeyIfExists($users, 'team_id');
 
-        Schema::table('users', function (Blueprint $table) {
+        Schema::table($users, function (Blueprint $table) {
             $table->dropColumn('team_id');
         });
     }

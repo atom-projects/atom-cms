@@ -118,6 +118,8 @@
     "Session logs": "Sessioni utente",
     ":online :hotel online": ":online :hotel online",
     "Flash client": "Client Flash",
+    "AIR client": "Client AIR",
+    "Open AIR client": "Apri il client AIR",
     "Ban type:": "Tipo di ban:",
     "Ban reason:": "Motivo del ban:",
     "Ban expiration:": "Scadenza del ban:",
@@ -516,5 +518,17 @@
     "Swedish": "Svedese",
     "Thank you for playing :hotel. We have put a lot of effort into making the hotel what it is, and we truly appreciate you being here": "Grazie per giocare su :hotel. Abbiamo messo tanto impegno per rendere l'hotel quello che è, e apprezziamo davvero che tu sia qui",
     "Translations": "Traduzioni",
-    "Turkish": "Turco"
+    "Turkish": "Turco",
+    ":hotel teams": "Team di :hotel",
+    "About the :hotel teams": "Informazioni sui team di :hotel",
+    "Our community teams bring players together to host events, help others, and make :hotel a fun place to be.": "I nostri team della community riuniscono i giocatori per organizzare eventi, aiutare gli altri e rendere :hotel un posto divertente.",
+    "Each team has its own role in the community. Meet the members above and discover how they contribute to :hotel!": "Ogni team ha il proprio ruolo nella community. Conosci i membri qui sopra e scopri come contribuiscono a :hotel!",
+    "Apply for teams": "Candidati per un team",
+    "How to join a team": "Come entrare in un team",
+    "We open team applications periodically. If you would like to help out at :hotel, keep an eye on the news for opportunities to join a team.": "Apriamo periodicamente le candidature per i team. Se vuoi dare una mano a :hotel, tieni d’occhio le notizie per le opportunità di entrare in un team.",
+    "Visit the :startTag Team application page :endTag to see which teams are currently recruiting.": "Visita la :startTag pagina delle candidature per i team :endTag per vedere quali team stanno cercando membri.",
+    "We currently have no members in this team": "Al momento questo team non ha membri",
+    "No teams found": "Nessun team trovato",
+    "Please check back later.": "Riprova più tardi.",
+    "There are no teams to display right now.": "Al momento non ci sono team da mostrare."
 }

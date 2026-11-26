@@ -50,7 +50,7 @@
             </div>
         </x-content.content-card>
 
-        <x-content.content-card icon="chat-icon" classes="borderborder-gray-900">
+        <x-content.content-card icon="chat-icon" classes="border border-gray-900">
             <x-slot:title>
                 {{ __('Apply for staff') }}
             </x-slot:title>

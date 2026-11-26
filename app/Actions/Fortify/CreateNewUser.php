@@ -3,6 +3,7 @@
 namespace App\Actions\Fortify;
 
 use App\Actions\Fortify\Rules\PasswordValidationRules;
+use App\Emulator\Contracts\RankRepository;
 use App\Emulator\Emulator;
 use App\Jobs\SendRegisteredUserWebhook;
 use App\Models\Miscellaneous\WebsiteBetaCode;
@@ -12,6 +13,7 @@ use App\Rules\CloudflareTurnstileRule;
 use App\Rules\GoogleRecaptchaRule;
 use App\Rules\WebsiteWordfilterRule;
 use App\Services\Auth\RegistrationMutex;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
@@ -32,7 +34,13 @@ class CreateNewUser implements CreatesNewUsers
      */
     public function create(array $input): User
     {
-        $ip = $this->ensureRegistrationIsOpen(request()->ip());
+        return $this->createWithIp($input, request()->ip());
+    }
+
+    /** @param array<string, mixed> $input */
+    public function createWithIp(array $input, ?string $ip): User
+    {
+        $ip = $this->ensureRegistrationIsOpen($ip);
         $validated = $this->validate($input);
         $password = Hash::make($validated['password']);
 
@@ -59,6 +67,39 @@ class CreateNewUser implements CreatesNewUsers
         return $user;
     }
 
+    /** @param array<string, mixed> $input */
+    public function createAdministrator(array $input): User
+    {
+        return $this->createByStaff($input, ['rank' => app(RankRepository::class)->highestRank()]);
+    }
+
+    /**
+     * Create an account on a staff member's behalf. The gates a visitor passes
+     * (captcha, terms, beta codes, the per-IP cap) do not apply, while the
+     * identity rules and the hotel's starting attributes do. Overrides are
+     * written on the caller's authority, past the model's mass-assignment guard.
+     *
+     * @param  array<string, mixed>  $input
+     * @param  array<string, mixed>  $overrides
+     */
+    public function createByStaff(array $input, array $overrides = []): User
+    {
+        $validated = $this->validate($input, registration: false);
+        $password = Hash::make($validated['password']);
+
+        return $this->mutex->run($this->lockIdentifiers($validated, '127.0.0.1'), function () use ($validated, $password, $overrides): User {
+            $this->ensureIdentityIsAvailable($validated);
+
+            $user = $this->createUser($validated, $password, '127.0.0.1');
+
+            if ($overrides !== []) {
+                $user->forceFill($overrides)->save();
+            }
+
+            return $user;
+        });
+    }
+
     private function ensureRegistrationIsOpen(?string $ip): string
     {
         if (setting('disable_registration', '0') === '1') {
@@ -76,8 +117,7 @@ class CreateNewUser implements CreatesNewUsers
         $this->ensureRegistrationIsOpen($ip);
 
         $matchingIpCount = User::query()
-            ->where('ip_current', $ip)
-            ->orWhere('ip_register', $ip)
+            ->where(fn (Builder $query) => $query->where('ip_current', $ip)->orWhere('ip_register', $ip))
             ->count();
 
         if ($matchingIpCount >= (int) (setting('max_accounts_per_ip') ?: 99)) {
@@ -98,8 +138,8 @@ class CreateNewUser implements CreatesNewUsers
         $motto = mb_substr($motto, 0, $constraints->mottoLength);
         $look = mb_substr($look, 0, $constraints->figureLength);
 
-        // credits and auth_ticket are guarded against mass assignment, so this
-        // trusted registration path assigns the full attribute set explicitly.
+        // credits are guarded against mass assignment, so this trusted
+        // registration path assigns the full attribute set explicitly.
         $user = User::query()->forceCreate([
             'username' => $input['username'],
             'mail' => $input['mail'],
@@ -111,7 +151,6 @@ class CreateNewUser implements CreatesNewUsers
             'credits' => setting('start_credits') ?: 1000,
             'ip_register' => $ip,
             'ip_current' => $ip,
-            'auth_ticket' => '',
             'home_room' => (int) (setting('hotel_home_room') ?: 0),
         ]);
 
@@ -173,18 +212,23 @@ class CreateNewUser implements CreatesNewUsers
      *
      * @return array{username: string, mail: string, password: string, beta_code?: string, referral_code?: string}
      */
-    private function validate(array $inputs): array
+    private function validate(array $inputs, bool $registration = true): array
     {
         $rules = [
-            'username' => ['required', 'string', sprintf('regex:%s', setting('username_regex') ?: '/^[a-zA-Z0-9_.-]+$/'), 'max:' . Emulator::constraints()->usernameLength, Rule::unique('users'), new WebsiteWordfilterRule],
-            'mail' => ['required', 'string', 'email', 'max:' . Emulator::constraints()->emailLength, Rule::unique('users')],
+            'username' => ['required', 'string', User::usernameFormatRule(), 'max:' . Emulator::constraints()->usernameLength, User::uniqueRule('username'), new WebsiteWordfilterRule],
+            'mail' => ['required', 'string', 'email', 'max:' . Emulator::constraints()->emailLength, User::uniqueRule('mail')],
             'password' => $this->passwordRules(),
-            'beta_code' => [Rule::requiredIf(setting('requires_beta_code') === '1'), 'nullable', 'string', new BetaCodeRule],
-            'referral_code' => ['nullable', 'string', 'max:255'],
-            'terms' => ['required', 'accepted'],
-            'g-recaptcha-response' => ['sometimes', 'string', new GoogleRecaptchaRule],
-            'cf-turnstile-response' => [new CloudflareTurnstileRule],
         ];
+
+        if ($registration) {
+            $rules += [
+                'beta_code' => [Rule::requiredIf(setting('requires_beta_code') === '1'), 'nullable', 'string', new BetaCodeRule],
+                'referral_code' => ['nullable', 'string', 'max:255'],
+                'terms' => ['required', 'accepted'],
+                'g-recaptcha-response' => [new GoogleRecaptchaRule],
+                'cf-turnstile-response' => [new CloudflareTurnstileRule],
+            ];
+        }
 
         $messages = [
             'g-recaptcha-response.required' => __('The Google recaptcha must be completed'),

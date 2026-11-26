@@ -4,7 +4,7 @@ namespace App\Filament\Resources\Hotel\BadgeTextEditors\Pages;
 
 use App\Filament\Resources\Hotel\BadgeTextEditors\BadgeTextEditorResource;
 use App\Models\WebsiteBadge;
-use App\Services\SettingsService;
+use App\Support\WebsiteSettingRules;
 use Exception;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
@@ -41,14 +41,14 @@ class ListBadgeTextEditors extends ListRecords
         ];
     }
 
-    public function exportToJson(SettingsService $settingsService): void
+    public function exportToJson(): void
     {
-        $jsonPath = $settingsService->getOrDefault('nitro_external_texts_file');
+        $jsonPath = WebsiteSettingRules::hotelPath('nitro_external_texts_file');
 
-        if (empty($jsonPath)) {
+        if ($jsonPath === null) {
             Notification::make()
                 ->title('Export Failed')
-                ->body('The JSON file path is not configured in the website settings.')
+                ->body('The nitro_external_texts_file setting is empty or outside HOTEL_FILE_ROOTS. See the log for details.')
                 ->danger()
                 ->send();
 
@@ -125,14 +125,14 @@ class ListBadgeTextEditors extends ListRecords
         }
     }
 
-    public function createBackup(SettingsService $settingsService): void
+    public function createBackup(): void
     {
-        $jsonPath = $settingsService->getOrDefault('nitro_external_texts_file');
+        $jsonPath = WebsiteSettingRules::hotelPath('nitro_external_texts_file');
 
-        if (empty($jsonPath)) {
+        if ($jsonPath === null) {
             Notification::make()
                 ->title('Backup Failed')
-                ->body('The JSON file path is not configured in the website settings.')
+                ->body('The nitro_external_texts_file setting is empty or outside HOTEL_FILE_ROOTS. See the log for details.')
                 ->danger()
                 ->send();
 

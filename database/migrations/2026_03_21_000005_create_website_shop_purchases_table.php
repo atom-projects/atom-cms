@@ -12,13 +12,13 @@ return new class extends Migration
         Schema::create('website_shop_purchases', function (Blueprint $table) {
             $table->id();
 
-            $table->integer('user_id');
-            $table->foreign('user_id')->references('id')->on('users')->cascadeOnDelete();
+            $table->playerId('user_id');
+            $table->foreignPlayer('user_id')->cascadeOnDelete();
 
             $table->foreignIdFor(WebsiteShopPackage::class)->constrained()->cascadeOnDelete();
 
-            $table->integer('gifted_to')->nullable();
-            $table->foreign('gifted_to')->references('id')->on('users')->nullOnDelete();
+            $table->playerId('gifted_to')->nullable();
+            $table->foreignPlayer('gifted_to')->nullOnDelete();
 
             $table->timestamps();
 

@@ -3,8 +3,8 @@
 namespace App\Services\Badge;
 
 use App\Services\Files\AtomicFileWriter;
-use App\Services\SettingsService;
 use App\Support\BadgeCode;
+use App\Support\WebsiteSettingRules;
 use InvalidArgumentException;
 use RuntimeException;
 
@@ -16,7 +16,6 @@ use RuntimeException;
 class FlashExternalTexts
 {
     public function __construct(
-        private readonly SettingsService $settings,
         private readonly AtomicFileWriter $files,
     ) {}
 
@@ -124,8 +123,6 @@ class FlashExternalTexts
 
     private function path(): ?string
     {
-        $path = $this->settings->getOrDefault('flash_external_texts_file');
-
-        return is_string($path) && $path !== '' ? $path : null;
+        return WebsiteSettingRules::hotelPath('flash_external_texts_file');
     }
 }

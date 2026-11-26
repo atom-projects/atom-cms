@@ -10,10 +10,10 @@ return new class extends Migration
     {
         Schema::create('user_home_messages', function (Blueprint $table) {
             $table->id();
-            $table->integer('user_id');
-            $table->foreign('user_id')->references('id')->on('users')->cascadeOnDelete();
-            $table->integer('recipient_user_id');
-            $table->foreign('recipient_user_id')->references('id')->on('users')->cascadeOnDelete();
+            $table->playerId('user_id');
+            $table->foreignPlayer('user_id')->cascadeOnDelete();
+            $table->playerId('recipient_user_id');
+            $table->foreignPlayer('recipient_user_id')->cascadeOnDelete();
             $table->text('content');
             $table->timestamps();
         });

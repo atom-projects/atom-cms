@@ -750,6 +750,7 @@ return [
         'select_all' => 'Select All',
         'deselect_all' => 'Deselect All',
         'send_notifications' => 'Send Notifications',
+        'generate_password' => 'Generate password',
     ]
 
 ];

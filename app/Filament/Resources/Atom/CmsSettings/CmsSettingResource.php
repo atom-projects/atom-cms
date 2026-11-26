@@ -6,11 +6,14 @@ use App\Filament\Concerns\TranslatableResource;
 use App\Filament\Resources\Atom\CmsSettings\Pages\ManageCmsSettings;
 use App\Filament\Support\TruncatedTooltip;
 use App\Models\Miscellaneous\WebsiteSetting;
+use App\Support\WebsiteSettingRules;
+use Closure;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -40,12 +43,18 @@ class CmsSettingResource extends Resource
                             ->maxLength(50)
                             ->autocomplete()
                             ->unique(ignoreRecord: true)
-                            ->required(),
+                            ->required()
+                            ->rule(fn (): Closure => function (string $attribute, mixed $value, Closure $fail): void {
+                                if (is_string($value) && ! (auth()->user()?->can('useKey', [WebsiteSetting::class, $value]) ?? false)) {
+                                    $fail('Only the highest staff rank may manage this setting.');
+                                }
+                            }),
 
                         TextInput::make('value')
                             ->label(__('filament::resources.inputs.value'))
                             ->required()
                             ->maxLength(255)
+                            ->rule(fn (Get $get): Closure => WebsiteSettingRules::rule((string) $get('key')))
                             ->autocomplete(),
 
                         TextInput::make('comment')

@@ -133,7 +133,7 @@ class EditCatalogItem extends Page implements HasForms
             });
     }
 
-    /** @return Collection<int, covariant array{room: Room|null, count: int<0, max>}> */
+    /** @return Collection<int, covariant array{room: Room|null, count: int}> */
     public function getRoomPlacementsProperty(): Collection
     {
         if (! $this->itemBase) {

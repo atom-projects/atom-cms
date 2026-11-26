@@ -21,6 +21,7 @@ use App\Emulator\Drivers\Ada\AdaPlayerStatsRepository;
 use App\Emulator\Drivers\Ada\AdaRankRepository;
 use App\Emulator\Drivers\Ada\AdaRoomRepository;
 use App\Emulator\Drivers\Arcturus\ArcturusDriver;
+use App\Emulator\Drivers\Plus\PlusDriver;
 use App\Emulator\EmulatorManager;
 use App\Enums\CurrencyTypes;
 use App\Exceptions\RconConnectionException;
@@ -52,6 +53,7 @@ use App\Models\Community\Staff\WebsiteStaffApplications;
 use App\Models\User;
 use App\Services\Community\StaffService;
 use App\Services\User\UserApiService;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -63,16 +65,16 @@ beforeEach(function () {
     setSetting('start_points', '0');
 });
 
-test('ada binds every emulator contract and plus is removed', function () {
+test('ada binds every emulator contract alongside the other drivers', function () {
     $drivers = config('emulator.drivers');
 
     // Arcturus remains the shipped default; this suite selects Ada.
     expect(config('emulator.drivers.arcturus'))->toBe(ArcturusDriver::class)
         ->and(config('emulator.driver'))->toBe('ada')
-        ->and($drivers)->toHaveKeys(['arcturus', 'ada'])
-        ->and($drivers)->not->toHaveKey('plus')
+        ->and($drivers)->toHaveKeys(['arcturus', 'ada', 'plus'])
         ->and($drivers['arcturus'])->toBe(ArcturusDriver::class)
         ->and($drivers['ada'])->toBe(AdaDriver::class)
+        ->and($drivers['plus'])->toBe(PlusDriver::class)
         ->and(app(EmulatorManager::class)->driver('ada')->bindings())->toMatchArray([
             BadgeRepository::class => AdaBadgeRepository::class,
             BanRepository::class => AdaBanRepository::class,
@@ -196,14 +198,10 @@ test('ada resolves online friendships in both directions', function () {
         ->toBe(collect([$outgoing->id, $incoming->id, $offline->id])->sort()->values()->all());
 });
 
-test('ada reads presence from its own tables, not the mirrored users column', function () {
+test('ada reads presence from player_data', function () {
     $online = User::factory()->create();
     $offline = User::factory()->create();
 
-    // The users column is a compatibility mirror Ada never writes to. Set it
-    // to the opposite of the truth to prove nothing reads it.
-    DB::table('users')->where('id', $online->id)->update(['online' => '0']);
-    DB::table('users')->where('id', $offline->id)->update(['online' => '1']);
     DB::table('player_data')->where('player_id', $online->id)->update(['is_online' => true]);
 
     $api = app(UserApiService::class);
@@ -215,7 +213,7 @@ test('ada reads presence from its own tables, not the mirrored users column', fu
 });
 
 test('ada refreshes users even when a query selects a column subset', function () {
-    $user = User::factory()->create(['motto' => 'mirror motto', 'look' => 'mirror-look']);
+    $user = User::factory()->create(['motto' => 'old motto', 'look' => 'old-look']);
 
     DB::table('player_data')->where('player_id', $user->id)->update(['is_online' => true]);
     DB::table('player_avatar_data')->where('player_id', $user->id)->update([
@@ -223,16 +221,15 @@ test('ada refreshes users even when a query selects a column subset', function (
         'figure_code' => 'live-look',
     ]);
 
-    // The public API selects username/motto/look and no key. Without the key
-    // there is nothing to match against Ada, and the stale mirror would be
-    // served instead.
+    // The public API selects username/motto/look and no key; those still
+    // resolve to Ada's aggregate tables.
     $api = app(UserApiService::class);
 
     expect($api->fetchUser($user->username)?->motto)->toBe('live motto')
         ->and($api->onlineUsers()->first()?->look)->toBe('live-look');
 });
 
-test('ada refreshes a whole result set in a fixed number of queries', function () {
+test('ada reads a whole result set in one query', function () {
     User::factory()->count(15)->create();
 
     DB::flushQueryLog();
@@ -243,10 +240,10 @@ test('ada refreshes a whole result set in a fixed number of queries', function (
 
     DB::disableQueryLog();
 
-    // One query for the users, one for the Ada aggregates, one for the roles.
-    // Anything that scales with the result count is an N+1 regression.
+    // Ada's aggregates and roles are selected with the players. Anything that
+    // scales with the result count is an N+1 regression.
     expect($users)->toHaveCount(15)
-        ->and($queries)->toBe(3);
+        ->and($queries)->toBe(1);
 });
 
 test('ada only writes the aggregates whose columns actually changed', function () {
@@ -267,7 +264,7 @@ test('ada only writes the aggregates whose columns actually changed', function (
     DB::disableQueryLog();
 
     expect($writes)->toHaveCount(1)
-        ->and($writes->first()['query'])->toContain('`users`')
+        ->and($writes->first()['query'])->toContain('`players`')
         ->and(DB::table('player_avatar_data')->where('player_id', $user->id)->value('motto'))->toBe('Set in game')
         ->and(DB::table('player_website_data')->where('player_id', $user->id)->value('last_ip'))->toBe('203.0.113.9');
 });
@@ -320,6 +317,19 @@ test('ada roles drive the public staff listing', function () {
         ->and($positions->flatMap->users->pluck('id'))->toContain($staff->id);
 });
 
+test('ada renders staff cards with their rank details', function (string $theme) {
+    setSetting('theme', $theme);
+    setSetting('enable_caching', '0');
+    setSetting('min_staff_rank', '5');
+    $staff = User::factory()->count(2)->create(['rank' => 5, 'hidden_staff' => false]);
+
+    $this->actingAs($staff->firstOrFail())
+        ->get(route('staff.index'))
+        ->assertOk()
+        ->assertSee([$staff[0]->username, $staff[1]->username])
+        ->assertViewHas('employees', fn (Collection $positions): bool => $positions->flatMap->users->firstWhere('id', $staff[0]->id)?->permission?->rank_name === 'Moderator');
+})->with(['atom', 'dusk']);
+
 test('ada role display fields render on an article page', function () {
     setSetting('theme', 'atom');
 
@@ -338,7 +348,7 @@ test('ada role display fields render on an article page', function () {
 });
 
 test('ada roles back staff positions and applications', function () {
-
+    setSetting('force_staff_2fa', '0');
     $user = User::factory()->create(['rank' => 6]);
     $position = WebsiteOpenPosition::create([
         'position_kind' => 'rank',
@@ -354,6 +364,9 @@ test('ada roles back staff positions and applications', function () {
 
     expect($position->permission?->rank_name)->toBe('Admin')
         ->and($application->rank?->rank_name)->toBe('Admin');
+
+    $this->actingAs($user)->getJson('/api/v1/applications/' . $position->id)->assertOk()
+        ->assertJsonPath('data.badge', '')->assertJsonPath('data.color', '#327fa8');
 });
 
 test('ada renders the shared cms page surface', function () {

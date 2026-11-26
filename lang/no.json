@@ -117,6 +117,8 @@
     "Session logs": "Øktlogg",
     ":online :hotel online": ":online :hotel pålogget",
     "Flash client": "Flash-klient",
+    "AIR client": "AIR-klient",
+    "Open AIR client": "Åpne AIR-klient",
     "Ban type:": "Type utestengelse:",
     "Ban reason:": "Grunn til utestengelse:",
     "Ban expiration:": "Utestengelsen utløper:",
@@ -511,5 +513,17 @@
     "Swedish": "Svensk",
     "Thank you for playing :hotel. We have put a lot of effort into making the hotel what it is, and we truly appreciate you being here": "Takk for at du spiller :hotel. Vi har lagt mye arbeid i å gjøre hotellet til det det er, og vi setter stor pris på at du er her",
     "Translations": "Oversettelser",
-    "Turkish": "Tyrkisk"
+    "Turkish": "Tyrkisk",
+    ":hotel teams": ":hotel-team",
+    "About the :hotel teams": "Om :hotel-teamene",
+    "Our community teams bring players together to host events, help others, and make :hotel a fun place to be.": "Våre community-team samler spillere for å arrangere events, hjelpe andre og gjøre :hotel til et morsomt sted å være.",
+    "Each team has its own role in the community. Meet the members above and discover how they contribute to :hotel!": "Hvert team har sin egen rolle i communityet. Møt medlemmene ovenfor og se hvordan de bidrar til :hotel!",
+    "Apply for teams": "Søk om et team",
+    "How to join a team": "Slik blir du med i et team",
+    "We open team applications periodically. If you would like to help out at :hotel, keep an eye on the news for opportunities to join a team.": "Vi åpner for teamsøknader med jevne mellomrom. Hvis du vil hjelpe til på :hotel, følg med på nyhetene for muligheter til å bli med i et team.",
+    "Visit the :startTag Team application page :endTag to see which teams are currently recruiting.": "Besøk :startTag siden for teamsøknader :endTag for å se hvilke team som rekrutterer nå.",
+    "We currently have no members in this team": "Dette teamet har for øyeblikket ingen medlemmer",
+    "No teams found": "Ingen team funnet",
+    "Please check back later.": "Kom tilbake senere.",
+    "There are no teams to display right now.": "Det er ingen team å vise akkurat nå."
 }

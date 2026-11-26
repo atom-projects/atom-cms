@@ -1,11 +1,46 @@
-<nav class="nav-header">
-    <div class="max-w-7xl w-full flex justify-between items-center h-[120px]">
-        <a href="/" class="transition duration-300 ease-in-out hover:scale-105">
+<nav
+    class="nav-header relative z-30"
+    x-data="{
+        menuOpen: false,
+        closeMenu() {
+            if (!this.menuOpen || this.$refs.menuToggle.offsetParent === null) {
+                return
+            }
+
+            this.menuOpen = false
+
+            if (this.$refs.menu.contains(document.activeElement)) {
+                this.$refs.menuToggle.focus()
+            }
+        }
+    }"
+    x-on:keydown.escape.prevent="closeMenu()"
+    x-on:click.outside="closeMenu()"
+    x-on:focusin.window="!$el.contains($event.target) && closeMenu()"
+    x-on:resize.window="if (!menuOpen && $refs.menuToggle.offsetParent !== null && $refs.menu.contains(document.activeElement)) $refs.menuToggle.focus()"
+>
+    <div class="max-w-7xl w-full flex flex-wrap justify-between items-center min-h-[60px] px-5 lg:h-[120px] xl:px-0">
+        <a href="{{ route('welcome') }}" class="hidden lg:block transition duration-300 ease-in-out hover:scale-105">
             <img src="{{ setting('cms_logo') }}" alt="">
         </a>
 
-        <div class="flex text-white gap-x-14">
-            <x-navigation.dropdown icon="community_icon.png" route-group="help-center*" :uppercase="true">
+        <button
+            x-ref="menuToggle"
+            x-on:click="menuOpen ? closeMenu() : menuOpen = true"
+            :aria-expanded="menuOpen"
+            aria-expanded="false"
+            aria-controls="dusk-navigation-menu"
+            aria-label="{{ __('Open main menu') }}"
+            type="button"
+            class="ml-auto py-4 text-white lg:hidden"
+        >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5M3.75 17.25h16.5" />
+            </svg>
+        </button>
+
+        <div id="dusk-navigation-menu" x-ref="menu" x-show="menuOpen" style="display: none;" class="flex w-full flex-col gap-3 pb-4 text-white lg:flex! lg:w-auto lg:flex-row lg:items-center lg:gap-x-14 lg:pb-0">
+            <x-navigation.dropdown icon="community_icon.png" :route-group="['staff.*', 'teams.*', 'team-applications.*', 'staff-applications.*', 'values.*', 'help-center.*', 'photos.*']" :uppercase="true" :responsive="true">
                 {{ __('Community') }}
 
                 <x-slot:children>
@@ -16,10 +51,10 @@
                     <x-navigation.dropdown-child :route="route('teams.index')">
                         {{ __('Teams') }}
                     </x-navigation.dropdown-child>
-					
-        <x-navigation.dropdown-child :route="route('team-applications.index')">
-            {{ __('Team applications') }}
-        </x-navigation.dropdown-child>
+
+                    <x-navigation.dropdown-child :route="route('team-applications.index')">
+                        {{ __('Team applications') }}
+                    </x-navigation.dropdown-child>
 
                     <x-navigation.dropdown-child :route="route('staff-applications.index')">
                         {{ __('Staff applications') }}
@@ -39,30 +74,19 @@
                 </x-slot:children>
             </x-navigation.dropdown>
 
-            <a href="{{ route('leaderboard.index') }}" class="flex flex-col gap-1 items-center transition ease-in-out hover:text-[#ac93da]">
-                <img class="icon" src="{{ asset('/assets/images/dusk/leaderboard_icon.png') }}" alt="">
+            <x-navigation.link :route="route('leaderboard.index')" icon="leaderboard_icon.png" route-group="leaderboard.*">
                 {{ __('Leaderboard') }}
-            </a>
+            </x-navigation.link>
 
-            <a href="{{ route('article.index') }}" class="flex flex-col gap-1 items-center transition ease-in-out hover:text-[#ac93da]">
-                <img class="icon" src="{{ asset('/assets/images/dusk/news_icon.png') }}" alt="">
+            <x-navigation.link :route="route('article.index')" icon="news_icon.png" route-group="article.*">
                 {{ __('News') }}
-            </a>
+            </x-navigation.link>
 
-            {{--
-            <a href="#" class="flex flex-col gap-1 items-center transition ease-in-out hover:text-[#ac93da]">
-                <img class="icon" src="{{ asset('/assets/images/dusk/events_icon.png') }}" alt="community icon">
-                Events
-            </a>
-            --}}
-
-
-            <a href="{{ route('shop.index') }}" class="flex flex-col gap-1 items-center transition ease-in-out hover:text-[#ac93da]">
-                <img class="icon" src="{{ asset('/assets/images/dusk/store_icon.png') }}" alt="">
+            <x-navigation.link :route="route('shop.index')" icon="store_icon.png" route-group="shop.*">
                 {{ __('Store') }}
-            </a>
+            </x-navigation.link>
 
-            <x-navigation.dropdown icon="home_icon.png" route-group="user*" :uppercase="true">
+            <x-navigation.dropdown icon="home_icon.png" :href="auth()->check() ? route('me.show') : route('welcome')" :route-group="['me.*', 'home.*', 'draw-badge', 'settings.*', 'welcome', 'register*']" child-classes="min-w-[150px] lg:left-auto lg:right-0" :uppercase="true" :responsive="true">
                 {{ __('Home') }}
 
                 <x-slot:children>
@@ -70,20 +94,20 @@
                         <x-navigation.dropdown-child :route="route('home.show', Auth::user()->username)">
                             {{ __('My Home') }}
                         </x-navigation.dropdown-child>
-						
-						<x-navigation.dropdown-child :route="route('draw-badge')">
-							{{ __('Badge Drawer') }}
-						</x-navigation.dropdown-child>
+
+                        <x-navigation.dropdown-child :route="route('draw-badge')">
+                            {{ __('Badge Drawer') }}
+                        </x-navigation.dropdown-child>
 
                         <x-navigation.dropdown-child :route="route('settings.account.show')">
                             {{ __('Account settings') }}
                         </x-navigation.dropdown-child>
 
-                        <button class="dropdown-item" @click.stop.prevent="document.getElementById('logout-form').submit();">
+                        <button type="submit" form="dusk-logout-form" class="dropdown-item">
                             {{ __('Logout') }}
                         </button>
 
-                        <form id="logout-form" action="{{ route('logout') }}" method="POST" class="hidden">
+                        <form id="dusk-logout-form" action="{{ route('logout') }}" method="POST" class="hidden">
                             @csrf
                         </form>
                     @endauth
@@ -92,7 +116,6 @@
                         <x-navigation.dropdown-child :route="route('login')">
                             {{ __('Login') }}
                         </x-navigation.dropdown-child>
-
 
                         <x-navigation.dropdown-child :route="route('register')">
                             {{ __('Register') }}

@@ -15,6 +15,7 @@ use App\Emulator\Contracts\PlayerStatsRepository;
 use App\Emulator\Contracts\RankRepository;
 use App\Emulator\Contracts\RoomRepository;
 use App\Emulator\Data\PlayerConstraints;
+use App\Emulator\Data\PlayerSchema;
 use App\Emulator\Drivers\Arcturus\ArcturusBadgeRepository;
 use App\Emulator\Drivers\Arcturus\ArcturusBanRepository;
 use App\Emulator\Drivers\Arcturus\ArcturusCurrencyRepository;
@@ -66,6 +67,16 @@ class ThirdEmulatorDriver implements EmulatorDriver
     public function playerConstraints(): PlayerConstraints
     {
         return new PlayerConstraints(24, 100, 80, 220);
+    }
+
+    public function passwordHashing(): string
+    {
+        return 'bcrypt';
+    }
+
+    public function playerSchema(): PlayerSchema
+    {
+        return new PlayerSchema;
     }
 
     public function installer(): EmulatorInstaller

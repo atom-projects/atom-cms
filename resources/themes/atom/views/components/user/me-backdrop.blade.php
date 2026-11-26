@@ -12,10 +12,21 @@
         </a>
     </div>
 
-    <a data-turbolinks="false" href="{{ route('nitro-client') }}">
-        <button
-            class="relative rounded-full bg-white/90 px-6 py-2 text-lg font-semibold text-black transition duration-300 ease-in-out hover:bg-white dark:bg-gray-900 dark:text-white">
-            {{ __('Go to :hotel', ['hotel' => setting('hotel_name')]) }}
-        </button>
-    </a>
+    <div class="flex flex-col items-end gap-y-2">
+        <a data-turbolinks="false" href="{{ route('nitro-client') }}" target="hotel-client">
+            <button
+                class="relative rounded-full bg-white/90 px-6 py-2 text-lg font-semibold text-black transition duration-300 ease-in-out hover:bg-white dark:bg-gray-900 dark:text-white">
+                {{ __('Go to :hotel', ['hotel' => setting('hotel_name')]) }}
+            </button>
+        </a>
+
+        @if (config('habbo.client.air_enabled'))
+            <a data-turbolinks="false" href="{{ route('air-client') }}">
+                <button
+                    class="relative rounded-full bg-white/90 px-6 py-2 text-lg font-semibold text-black transition duration-300 ease-in-out hover:bg-white dark:bg-gray-900 dark:text-white">
+                    {{ __('Open AIR client') }}
+                </button>
+            </a>
+        @endif
+    </div>
 </div>

@@ -3,15 +3,20 @@
 namespace App\Providers;
 
 use App\Actions\Fortify\CreateNewUser;
-use App\Emulator\Data\Feature;
-use App\Emulator\Emulator;
+use App\Http\Requests\ForgotPasswordRequest;
 use App\Models\Articles\WebsiteArticle;
 use App\Models\Miscellaneous\CameraWeb;
+use App\Models\User;
+use App\Services\Auth\PasswordVerifier;
+use App\Services\Community\CameraService;
+use App\Support\FrontendUrls;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Str;
 use Laravel\Fortify\Actions\AttemptToAuthenticate;
 use Laravel\Fortify\Actions\EnsureLoginIsNotThrottled;
 use Laravel\Fortify\Actions\PrepareAuthenticatedSession;
@@ -35,11 +40,38 @@ class FortifyServiceProvider extends ServiceProvider
 
     private function configureRateLimiting(): void
     {
-        RateLimiter::for('login', fn (Request $request) => Limit::perMinute(5)->by($request->input('username') . $request->ip()));
+        RateLimiter::for('login', function (Request $request): Limit {
+            $username = $request->input('username');
+            $identity = is_string($username)
+                ? 'username:' . Str::transliterate(Str::lower($username))
+                : 'invalid-username';
+
+            return Limit::perMinute(5)->by($identity . '|' . $request->ip());
+        });
         RateLimiter::for('two-factor', fn (Request $request) => Limit::perMinute(5)->by($request->session()->get('login.id')));
         RateLimiter::for('two-factor-settings', fn (Request $request) => Limit::perMinute(6)->by(
             ($request->user()?->getAuthIdentifier() ?? 'guest') . '|' . $request->ip(),
         ));
+        // Keyed by account only, so new IP addresses do not give a stolen session more guesses.
+        // Password fields are not trimmed, so a value of only spaces is still a guess.
+        RateLimiter::for('current-password', function (Request $request): Limit {
+            if ($request->input('current_password') === null && $request->input('password') === null) {
+                return Limit::none();
+            }
+
+            return Limit::perMinute(5)->by($request->user()?->getAuthIdentifier() ?? $request->ip());
+        });
+        // Counts every valid address, with or without an account, so a 429 does not reveal which addresses exist.
+        // The window equals the link lifetime, so a blocked address always still holds a live link.
+        // The key is only trimmed and lowercased, so look-alike addresses never share a budget.
+        RateLimiter::for('password-reset-links', function (Request $request): Limit {
+            if (Validator::make($request->only('mail'), (new ForgotPasswordRequest)->rules())->fails()) {
+                return Limit::none();
+            }
+
+            return Limit::perMinutes(max(1, (int) config('habbo.password_reset_token_time')), 3)
+                ->by('mail:' . $request->string('mail')->trim()->lower());
+        });
     }
 
     private function configureViews(): void
@@ -48,7 +80,7 @@ class FortifyServiceProvider extends ServiceProvider
 
         Fortify::registerView(function (Request $request) {
             if (setting('disable_registration') === '1') {
-                return to_route('welcome')->withErrors(['register' => __('Registration is currently disabled.')]);
+                return redirect(app(FrontendUrls::class)->route('welcome'))->withErrors(['register' => __('Registration is currently disabled.')]);
             }
 
             return view('auth.register', [
@@ -70,14 +102,25 @@ class FortifyServiceProvider extends ServiceProvider
     {
         return [
             'articles' => WebsiteArticle::latest('id')->take($articles)->has('user')->with('user:id,username,look')->get(),
-            'photos' => Emulator::supports(Feature::CameraPhotos)
-                ? CameraWeb::latest('id')->take($photos)->with('user:id,username,look')->get()
-                : new Collection,
+            'photos' => app(CameraService::class)->latestPhotos($photos),
         ];
     }
 
     private function authenticate(): void
     {
+        Fortify::authenticateUsing(function (Request $request): ?User {
+            $username = $request->input('username');
+            $password = $request->input('password');
+
+            if (! is_string($username) || ! is_string($password)) {
+                return null;
+            }
+
+            $user = User::query()->where('username', $username)->first();
+
+            return $user !== null && app(PasswordVerifier::class)->verify($user, $password) ? $user : null;
+        });
+
         Fortify::authenticateThrough(function () {
             return array_filter([
                 config('fortify.limiters.login') ? null : EnsureLoginIsNotThrottled::class,

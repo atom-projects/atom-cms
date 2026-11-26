@@ -749,5 +749,6 @@ return [
         'select_all' => 'Select All',
         'deselect_all' => 'Deselect All',
         'sent_notifications' => 'Send Notifications',
+        'generate_password' => 'Generate password',
     ]
 ];

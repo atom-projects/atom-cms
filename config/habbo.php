@@ -38,14 +38,28 @@ return [
         'rename_tables' => env('RENAME_COLLIDING_TABLES', false),
     ],
 
+    // Folders that file and folder settings (texts files, badge and ads folders) must stay inside.
+    // HOTEL_FILE_ROOTS adds to the built-in folders, which the default settings use.
+    'hotel_file_roots' => array_values(array_unique(array_filter(array_map('trim', [
+        '/var/www/gamedata',
+        '/var/www/hotel/hotel-files',
+        'C:\Hotel\hotel-files',
+        ...explode(',', (string) env('HOTEL_FILE_ROOTS', '')),
+    ])))),
+
     'rcon' => [
         'connect_timeout_seconds' => (float) env('RCON_CONNECT_TIMEOUT', 1),
         'read_timeout_seconds' => (float) env('RCON_READ_TIMEOUT', 2),
+        'secret' => env('RCON_SECRET'),
     ],
 
     'client' => [
         'nitro_path' => env('NITRO_CLIENT_PATH', '/client/html5/nitro-client'), // Path where the index.html is
+        // Origins besides APP_URL that may serve Nitro; the client URL carries the login ticket.
+        'nitro_allowed_origins' => array_values(array_filter(array_map('trim', explode(',', (string) env('NITRO_ALLOWED_ORIGINS', ''))))),
         'flash_enabled' => env('FLASH_CLIENT_ENABLED', false),
+        // AIR launcher hand-off: habbo://hab?server=<APP_URL host>&token=<sso>.
+        'air_enabled' => env('AIR_CLIENT_ENABLED', false),
     ],
 
     'flash' => [
@@ -91,5 +105,11 @@ return [
         'notify_url' => env('PAYPAL_NOTIFY_URL', ''), // Change this accordingly for your application.
         'locale' => env('PAYPAL_LOCALE', 'en_US'), // force gateway language  i.e. it_IT, es_ES, en_US ... (for express checkout only)
         'validate_ssl' => true,
+    ],
+
+    'avatar_imager' => [
+        'secret' => env('AVATAR_IMAGER_SECRET'),
+        'url' => env('AVATAR_IMAGER_URL', '/avatars'),
+        'version' => (int) env('AVATAR_IMAGER_VERSION', 1),
     ],
 ];

@@ -2,7 +2,7 @@
 
 namespace Database\Seeders;
 
-use App\Models\Game\Permission;
+use App\Emulator\Contracts\RankRepository;
 use App\Models\Miscellaneous\WebsiteMaintenanceTask;
 use App\Models\User;
 use Illuminate\Database\Seeder;
@@ -13,8 +13,8 @@ class WebsiteMaintenanceTasksSeeder extends Seeder
 {
     public function run(): void
     {
-        $permission = Permission::orderByDesc('id')->first();
-        $user = User::where('rank', $permission->id)->first();
+        $highestRank = app(RankRepository::class)->highestRank();
+        $user = User::where('rank', $highestRank)->first();
 
         if ($user === null) {
             $user = User::query()->forceCreate([
@@ -28,9 +28,8 @@ class WebsiteMaintenanceTasksSeeder extends Seeder
                 'credits' => 0,
                 'ip_register' => '127.0.0.1',
                 'ip_current' => '127.0.0.1',
-                'auth_ticket' => '',
                 'home_room' => 0,
-                'rank' => $permission?->id ?? 1,
+                'rank' => $highestRank,
             ]);
         }
 

@@ -10,7 +10,9 @@ use App\Policies\ActivityPolicy;
 use App\Policies\WebsiteArticleCommentPolicy;
 use App\Policies\WebsiteHelpCenterTicketPolicy;
 use App\Policies\WebsiteHelpCenterTicketReplyPolicy;
+use App\Support\FrontendUrls;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
+use Illuminate\Session\Middleware\AuthenticateSession;
 use Spatie\Activitylog\Models\Activity;
 
 class AuthServiceProvider extends ServiceProvider
@@ -32,6 +34,6 @@ class AuthServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        AuthenticateSession::redirectUsing(fn (): string => app(FrontendUrls::class)->route('login'));
     }
 }

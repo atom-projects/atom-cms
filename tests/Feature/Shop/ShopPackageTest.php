@@ -4,9 +4,13 @@ use App\Actions\Shop\PurchaseShopPackage;
 use App\Data\RconResponse;
 use App\Emulator\Contracts\CurrencyRepository;
 use App\Enums\CurrencyTypes;
+use App\Exceptions\ShopPurchaseException;
 use App\Models\Shop\WebsiteShopCategory;
+use App\Models\Shop\WebsiteShopItem;
+use App\Models\Shop\WebsiteShopPackage;
 use App\Models\Shop\WebsiteShopPurchase;
 use App\Models\User;
+use App\Support\PermissionRanks;
 use Database\Seeders\WebsiteShopSeeder;
 use Illuminate\Support\Collection;
 
@@ -42,6 +46,19 @@ test('the seeded shop categories have local icons and render once in the Atom th
     foreach ($categories as $category) {
         expect(substr_count($response->getContent(), route('shop.index', $category)))->toBe(1);
     }
+});
+
+test('the seeded shop sells no rank and no seeded package needs a player rank above the default', function () {
+    installHotel();
+    // The lowest staff rank on a stock Arcturus database.
+    setSetting('min_staff_rank', '3');
+    $this->seed(WebsiteShopSeeder::class);
+
+    $playerRanks = array_values(array_diff(array_keys(PermissionRanks::grantableRanks()), [1]));
+
+    expect($playerRanks)->toContain(2)
+        ->and(WebsiteShopItem::query()->where('type', 'rank')->pluck('name')->all())->toBe([])
+        ->and(WebsiteShopPackage::query()->whereIn('min_rank', $playerRanks)->pluck('name')->all())->toBe([]);
 });
 
 test('a package purchase charges the buyer and delivers its items', function () {
@@ -145,6 +162,148 @@ test('a gifted package delivers to the recipient and records the gift', function
     expect((int) $buyer->refresh()->website_balance)->toBe(9500)
         ->and((int) $recipient->refresh()->credits)->toBe($recipientCredits + 200)
         ->and(WebsiteShopPurchase::where('user_id', $buyer->id)->where('gifted_to', $recipient->id)->count())->toBe(1);
+});
+
+test('a package that stops being giftable cannot be delivered from a stale model', function () {
+    installHotel();
+
+    $buyer = User::factory()->create(['website_balance' => 10000]);
+    $recipient = User::factory()->create();
+    $package = makePackage(['is_giftable' => true, 'stock' => 1]);
+    $recipientCredits = (int) $recipient->credits;
+
+    WebsiteShopPackage::whereKey($package->id)->update(['is_giftable' => false]);
+
+    expect(fn () => app(PurchaseShopPackage::class)->execute($buyer, $package, $recipient->username))
+        ->toThrow(ShopPurchaseException::class, 'This package is not giftable');
+
+    expect((int) $buyer->refresh()->website_balance)->toBe(10000)
+        ->and((int) $recipient->refresh()->credits)->toBe($recipientCredits)
+        ->and($package->refresh()->stock)->toBe(1)
+        ->and(WebsiteShopPurchase::count())->toBe(0);
+});
+
+test('invalid item numbers reject the purchase and roll back earlier rewards', function (string $type, string $value, int $quantity) {
+    installHotel();
+
+    $buyer = User::factory()->create(['website_balance' => 10000, 'rank' => 1]);
+    $package = makePackage(['stock' => 1]);
+    $credits = (int) $buyer->credits;
+    $rank = (int) $buyer->rank;
+    $item = WebsiteShopItem::create([
+        'name' => 'Misconfigured reward',
+        'type' => $type,
+        'type_value' => $value,
+        'is_active' => true,
+    ]);
+    $package->items()->attach($item->id, ['quantity' => $quantity]);
+
+    $this->actingAs($buyer)
+        ->post(route('shop.buy-package', $package))
+        ->assertSessionHasErrors('message');
+
+    expect((int) $buyer->refresh()->website_balance)->toBe(10000)
+        ->and((int) $buyer->credits)->toBe($credits)
+        ->and((int) $buyer->rank)->toBe($rank)
+        ->and($package->refresh()->stock)->toBe(1)
+        ->and(WebsiteShopPurchase::count())->toBe(0);
+})->with([
+    'currency suffix' => ['currency', 'credits:50bad', 1],
+    'fractional currency' => ['currency', 'credits:50.5', 1],
+    'furniture suffix' => ['furniture', '230bad', 1],
+    'rank suffix' => ['rank', '5bad', 1],
+    'currency multiplication overflow' => ['currency', 'credits:' . PHP_INT_MAX, 2],
+]);
+
+function attachRankItem(WebsiteShopPackage $package, string $rank): void
+{
+    $item = WebsiteShopItem::create([
+        'name' => "Rank {$rank}",
+        'type' => 'rank',
+        'type_value' => $rank,
+        'is_active' => true,
+    ]);
+
+    $package->items()->attach($item->id, ['quantity' => 1]);
+}
+
+test('a rank package is refused before payment when the receiver already has that rank or higher', function (int $buyerRank, ?int $receiverRank) {
+    installHotel();
+
+    $buyer = User::factory()->create(['website_balance' => 10000, 'rank' => $buyerRank]);
+    $receiver = $receiverRank === null ? $buyer : User::factory()->create(['rank' => $receiverRank]);
+    $package = makePackage(['is_giftable' => true]);
+    attachRankItem($package, '2');
+    $credits = (int) $receiver->credits;
+    $rank = (int) $receiver->rank;
+
+    $this->actingAs($buyer)
+        ->post(route('shop.buy-package', $package), $receiver->is($buyer) ? [] : ['receiver' => $receiver->username])
+        ->assertSessionHasErrors(['message' => 'The account that receives this package already has this rank or a higher one']);
+
+    expect((int) $buyer->refresh()->website_balance)->toBe(10000)
+        ->and((int) $receiver->refresh()->rank)->toBe($rank)
+        ->and((int) $receiver->credits)->toBe($credits)
+        ->and(WebsiteShopPurchase::count())->toBe(0);
+})->with([
+    'a gift to an administrator' => [1, 7],
+    'a gift to a player with the same rank' => [1, 2],
+    'staff buying for themselves' => [6, null],
+]);
+
+test('a rank package with a staff rank is refused before payment', function () {
+    installHotel();
+
+    $buyer = User::factory()->create(['website_balance' => 10000, 'rank' => 1]);
+    $package = makePackage(['price' => 0]);
+    attachRankItem($package, '7');
+
+    $this->actingAs($buyer)
+        ->post(route('shop.buy-package', $package))
+        ->assertSessionHasErrors(['message' => 'This package is currently unavailable']);
+
+    expect((int) $buyer->refresh()->rank)->toBe(1)
+        ->and(WebsiteShopPurchase::count())->toBe(0);
+});
+
+test('a refused rank package sends nothing to the emulator', function (int $buyerRank, ?int $receiverRank, string $rank, string $message) {
+    installHotel();
+
+    $buyer = User::factory()->create(['website_balance' => 10000, 'rank' => $buyerRank, 'online' => '1'])->refresh();
+    $receiver = $receiverRank === null ? $buyer : User::factory()->create(['rank' => $receiverRank, 'online' => '1'])->refresh();
+    $package = makePackage(['is_giftable' => true]);
+    attachRankItem($package, $rank);
+    $this->rcon->connected();
+
+    $this->actingAs($buyer)
+        ->post(route('shop.buy-package', $package), $receiver->is($buyer) ? [] : ['receiver' => $receiver->username])
+        ->assertSessionHasErrors(['message' => $message]);
+
+    expect($this->rcon->calls)->toBe([])
+        ->and($receiver->refresh()->online)->toBeTrue()
+        ->and((int) $buyer->refresh()->website_balance)->toBe(10000)
+        ->and(WebsiteShopPurchase::count())->toBe(0);
+})->with([
+    'a gift to an online administrator' => [1, 7, '2', 'The account that receives this package already has this rank or a higher one'],
+    'an online player buying a rank they already have' => [2, null, '2', 'The account that receives this package already has this rank or a higher one'],
+    'a staff rank gifted to an online player' => [1, 1, '7', 'This package is currently unavailable'],
+]);
+
+test('an accepted rank package still alerts and disconnects an online receiver', function () {
+    installHotel();
+
+    $buyer = User::factory()->create(['website_balance' => 10000, 'rank' => 1, 'online' => '1'])->refresh();
+    $package = makePackage();
+    attachRankItem($package, '2');
+    $this->rcon->connected();
+
+    $this->actingAs($buyer)
+        ->post(route('shop.buy-package', $package))
+        ->assertSessionHas('success');
+
+    expect((int) $buyer->refresh()->rank)->toBe(2)
+        ->and($buyer->online)->toBeFalse()
+        ->and(array_map(fn (array $call): string => $call['args']['command'], $this->rcon->calls))->toBe(['alertuser', 'disconnect']);
 });
 
 test('an online recipient is disconnected before atomic delivery', function () {

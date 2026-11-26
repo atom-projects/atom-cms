@@ -2,6 +2,7 @@
 
 use App\Filament\Pages\Dashboard;
 use App\Filament\Pages\Login;
+use App\Filament\Resources\User\Users\Pages\ListUsers;
 use App\Models\Miscellaneous\WebsitePermission;
 use App\Models\User;
 use App\Models\User\Ban;
@@ -100,7 +101,7 @@ test('forced staff two-factor authentication also protects housekeeping', functi
 
     $this->actingAs($staff)
         ->get('/housekeeping')
-        ->assertRedirect(route('settings.two-factor'));
+        ->assertRedirect(route('filament.housekeeping.pages.two-factor-authentication'));
 });
 
 test('banned staff cannot access housekeeping', function () {
@@ -183,6 +184,23 @@ test('the user editor only resolves records below the actor rank', function () {
     $this->actingAs($actor)
         ->get("/housekeeping/user-management/users/{$higher->id}/edit")
         ->assertNotFound();
+});
+
+test('the user list shows every account, whatever its rank', function () {
+    installHotel();
+    grantHousekeepingPermission('can_access_housekeeping', 6);
+    grantHousekeepingPermission('edit_user', 6);
+    setSetting('force_staff_2fa', '0');
+
+    $actor = User::factory()->create(['rank' => 6]);
+    $lower = User::factory()->create(['rank' => 5]);
+    $peer = User::factory()->create(['rank' => 6]);
+    $higher = User::factory()->create(['rank' => 7]);
+
+    $this->actingAs($actor);
+
+    Livewire::test(ListUsers::class)
+        ->assertCanSeeTableRecords([$actor, $lower, $peer, $higher]);
 });
 
 test('every housekeeping policy names a permission the seeder ships', function () {

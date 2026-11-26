@@ -12,12 +12,13 @@ return new class extends Migration
      */
     public function up(): void
     {
-        $addSecret = ! Schema::hasColumn('users', 'two_factor_secret');
-        $addRecoveryCodes = ! Schema::hasColumn('users', 'two_factor_recovery_codes');
+        $users = cmsUserTable();
+        $addSecret = ! Schema::hasColumn($users, 'two_factor_secret');
+        $addRecoveryCodes = ! Schema::hasColumn($users, 'two_factor_recovery_codes');
         $addConfirmedAt = Fortify::confirmsTwoFactorAuthentication()
-            && ! Schema::hasColumn('users', 'two_factor_confirmed_at');
+            && ! Schema::hasColumn($users, 'two_factor_confirmed_at');
 
-        Schema::table('users', function (Blueprint $table) use ($addConfirmedAt, $addRecoveryCodes, $addSecret) {
+        Schema::table($users, function (Blueprint $table) use ($addConfirmedAt, $addRecoveryCodes, $addSecret) {
             if ($addSecret) {
                 $table->text('two_factor_secret')
                     ->after('password')
@@ -43,7 +44,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('users', function (Blueprint $table) {
+        $users = cmsUserTable();
+        Schema::table($users, function (Blueprint $table) {
             $table->dropColumn(array_merge([
                 'two_factor_secret',
                 'two_factor_recovery_codes',

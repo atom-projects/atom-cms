@@ -9,11 +9,12 @@ use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 
 /**
- * Bridges Atom's user model to the configured emulator's player identity.
+ * Writes the parts of a player the emulator keeps beside its player row.
  *
- * Arcturus stores the CMS and emulator identity in the same users row. Ada
- * normalises player data across several EF-owned tables, so its driver keeps
- * Atom's compatibility row in sync and hydrates it from Ada when it is read.
+ * Atom's User model lives on each emulator's own player table (see the
+ * driver's PlayerSchema). Attributes the emulator keeps in other tables are
+ * read through the schema and written here, from the model's events, inside
+ * the same transaction as the player row.
  */
 interface PlayerRepository
 {
@@ -21,17 +22,11 @@ interface PlayerRepository
 
     public function updated(User $user): void;
 
-    public function deleted(User $user): void;
-
     /**
-     * Refresh emulator-owned attributes on freshly loaded users.
-     *
-     * Called once per query with the whole result set, so drivers that mirror
-     * their state into Atom's users table can do so without an N+1.
-     *
-     * @param  array<int, User>  $users
+     * Called inside the delete's transaction before the player row goes, for
+     * emulator rows that restrict deleting it rather than cascading.
      */
-    public function hydrateMany(array $users): void;
+    public function deleting(User $user): void;
 
     /**
      * Constrain a user query to the players the emulator considers online.

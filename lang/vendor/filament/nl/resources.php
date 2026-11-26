@@ -751,5 +751,6 @@ return [
         'select_all' => 'Selecteer alles',
         'deselect_all' => 'Deselecteer alles',
         'send_notifications' => 'Stuur notificaties',
+        'generate_password' => 'Genereer wachtwoord',
     ]
 ];

@@ -34,9 +34,9 @@ class UserObserver
         $this->players->updated($user);
     }
 
-    public function deleted(User $user): void
+    public function deleting(User $user): void
     {
-        $this->players->deleted($user);
+        $this->players->deleting($user);
     }
 
     /**

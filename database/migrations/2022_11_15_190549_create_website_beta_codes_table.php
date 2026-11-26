@@ -11,7 +11,7 @@ return new class extends Migration
         Schema::create('website_beta_codes', function (Blueprint $table) {
             $table->id();
             $table->string('code')->unique();
-            $table->integer('user_id')->nullable();
+            $table->playerId('user_id')->nullable();
             $table->timestamps();
         });
     }

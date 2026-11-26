@@ -1,0 +1,65 @@
+<?php
+
+namespace App\Emulator\Drivers\Plus;
+
+use App\Emulator\Contracts\RankRepository;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Relations\Relation;
+
+final class PlusRankRepository implements RankRepository
+{
+    public function model(): string
+    {
+        return PlusRank::class;
+    }
+
+    public function displayNameColumn(): string
+    {
+        return 'name';
+    }
+
+    /** A player's role is their highest unexpired one; see PlusDriver's player schema. */
+    public function userKey(): string
+    {
+        return 'native_role_id';
+    }
+
+    public function highestRank(): int
+    {
+        return (int) PlusRank::query()->max('security_level');
+    }
+
+    public function optionsBelow(int $rank): array
+    {
+        return PlusRank::query()->where('security_level', '<', $rank)
+            ->orderBy('security_level')
+            ->orderByRaw("CASE WHEN security_level = 1 AND slug IN ('user', 'default', 'member') THEN 0 ELSE 1 END")
+            ->orderByDesc('weight')->get()
+            ->unique('security_level')->pluck('name', 'security_level')->all();
+    }
+
+    public function lowestStaffRank(): ?int
+    {
+        $level = PlusRank::query()->where('is_staff', true)->min('security_level');
+
+        return $level === null ? null : (int) $level;
+    }
+
+    public function forDisplay(Builder|Relation $query): Builder|Relation
+    {
+        return $query->select(['id', 'security_level', 'name']);
+    }
+
+    public function staffPositions(bool $includeHidden): Collection
+    {
+        return PlusRank::query()->where('is_staff', true)
+            ->when(! $includeHidden, fn (Builder $query) => $query->where('is_hidden', false))
+            ->orderByDesc('weight')
+            ->with(['users' => fn ($query) => $query
+                ->select('users.id', 'username', 'native_role_id', 'motto', 'look', 'hidden_staff', 'online')
+                ->when(! $includeHidden, fn ($query) => $query->where('hidden_staff', false))
+                ->with(['permission' => fn ($query) => $this->forDisplay($query)])])
+            ->get();
+    }
+}

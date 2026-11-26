@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Client;
 
 use App\Http\Controllers\Controller;
+use App\Services\Client\ClientLaunchService;
 use App\Support\AuthenticatedUser;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -17,17 +18,17 @@ class ClientController extends Controller
     {
         $user = AuthenticatedUser::from($request);
 
-        $user->update([
-            'ip_current' => $request->ip(),
-        ]);
+        $launcher = app(ClientLaunchService::class);
+        $ipAddress = $request->ip() ?: 'unknown';
 
-        $view = match ($client) {
-            'flash' => 'client.flash',
-            default => 'client.nitro',
-        };
+        if ($client === 'flash') {
+            return view('client.flash', ['sso' => $launcher->ticket($user, $ipAddress)]);
+        }
 
-        return view($view, [
-            'sso' => $user->ssoTicket(),
-        ]);
+        $launch = $launcher->nitro($user, $ipAddress);
+        abort_if($launch === null, 503, 'The game client is not configured correctly.');
+
+        // Custom theme views may still build the URL from $sso; nitro() has already checked nitro_path.
+        return view('client.nitro', ['sso' => $launch['sso'], 'nitroUrl' => $launch['url']]);
     }
 }

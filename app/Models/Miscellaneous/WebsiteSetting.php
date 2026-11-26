@@ -4,6 +4,7 @@ namespace App\Models\Miscellaneous;
 
 use App\Services\SettingsService;
 use App\Support\CommunityCache;
+use App\Support\WebsiteSettingRules;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -25,6 +26,7 @@ use Illuminate\Database\Eloquent\Model;
 class WebsiteSetting extends Model
 {
     public const OPTIONAL_INSTALLATION_KEYS = [
+        'discord_webhook_url',
         'flash_external_texts_file',
         'seo_description',
         'seo_keywords',
@@ -45,6 +47,9 @@ class WebsiteSetting extends Model
 
     protected static function booted(): void
     {
+        static::saving(function (WebsiteSetting $setting): void {
+            WebsiteSettingRules::validate($setting->key, $setting->value);
+        });
         static::saved(function (): void {
             app(SettingsService::class)->refresh();
             CommunityCache::forgetAll();

@@ -2,7 +2,6 @@
 
 namespace App\Models\Shop;
 
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
@@ -14,8 +13,6 @@ use Illuminate\Support\Carbon;
  * @property string|null $icon
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
- * @property-read Collection<int, WebsiteShopArticle> $articles
- * @property-read int|null $articles_count
  *
  * @method static \Illuminate\Database\Eloquent\Builder<static>|WebsiteShopCategory newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|WebsiteShopCategory newQuery()
@@ -32,12 +29,6 @@ use Illuminate\Support\Carbon;
 class WebsiteShopCategory extends Model
 {
     protected $guarded = [];
-
-    /** @return HasMany<WebsiteShopArticle, $this> */
-    public function articles(): HasMany
-    {
-        return $this->hasMany(WebsiteShopArticle::class);
-    }
 
     /** @return HasMany<WebsiteShopPackage, $this> */
     public function packages(): HasMany

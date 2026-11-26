@@ -1,5 +1,6 @@
 <?php
 
+use App\Emulator\Emulator;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -17,7 +18,7 @@ return new class extends Migration
 
         if (! Schema::hasColumn('website_staff_applications', 'approved_by')) {
             Schema::table('website_staff_applications', function (Blueprint $table) {
-                $table->integer('approved_by')->nullable()->after('status');
+                $table->playerId('approved_by')->nullable()->after('status');
             });
         }
 
@@ -29,7 +30,7 @@ return new class extends Migration
 
         if (! Schema::hasColumn('website_staff_applications', 'rejected_by')) {
             Schema::table('website_staff_applications', function (Blueprint $table) {
-                $table->integer('rejected_by')->nullable()->after('approved_at');
+                $table->playerId('rejected_by')->nullable()->after('approved_at');
             });
         }
 
@@ -42,7 +43,7 @@ return new class extends Migration
         if (! $this->foreignKeyExists('wsa_approved_by_fk')) {
             Schema::table('website_staff_applications', function (Blueprint $table) {
                 $table->foreign('approved_by', 'wsa_approved_by_fk')
-                    ->references('id')->on('users')
+                    ->references('id')->on(Emulator::playerSchema()->table)
                     ->nullOnDelete();
             });
         }
@@ -50,7 +51,7 @@ return new class extends Migration
         if (! $this->foreignKeyExists('wsa_rejected_by_fk')) {
             Schema::table('website_staff_applications', function (Blueprint $table) {
                 $table->foreign('rejected_by', 'wsa_rejected_by_fk')
-                    ->references('id')->on('users')
+                    ->references('id')->on(Emulator::playerSchema()->table)
                     ->nullOnDelete();
             });
         }

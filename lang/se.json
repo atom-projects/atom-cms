@@ -115,6 +115,8 @@
     "Session logs": "Sessionsloggar",
     ":online :hotel online": ":online :hotel online",
     "Flash client": "Flash-klient",
+    "AIR client": "AIR-klient",
+    "Open AIR client": "Öppna AIR-klient",
     "Ban type:": "Typ av avstängning:",
     "Ban reason:": "Anledning till avstängning:",
     "Ban expiration:": "Avstängningen går ut:",
@@ -515,5 +517,17 @@
     "Swedish": "Svenska",
     "Thank you for playing :hotel. We have put a lot of effort into making the hotel what it is, and we truly appreciate you being here": "Tack för att du spelar :hotel. Vi har lagt ner mycket arbete på att göra hotellet till vad det är, och vi uppskattar verkligen att du är här",
     "Translations": "Översättningar",
-    "Turkish": "Turkiska"
+    "Turkish": "Turkiska",
+    ":hotel teams": ":hotel-team",
+    "About the :hotel teams": "Om :hotel-teamen",
+    "Our community teams bring players together to host events, help others, and make :hotel a fun place to be.": "Våra community-team samlar spelare för att hålla events, hjälpa andra och göra :hotel till en rolig plats att vara på.",
+    "Each team has its own role in the community. Meet the members above and discover how they contribute to :hotel!": "Varje team har sin egen roll i communityn. Träffa medlemmarna ovan och se hur de bidrar till :hotel!",
+    "Apply for teams": "Ansök till ett team",
+    "How to join a team": "Så går du med i ett team",
+    "We open team applications periodically. If you would like to help out at :hotel, keep an eye on the news for opportunities to join a team.": "Vi öppnar teamansökningar med jämna mellanrum. Om du vill hjälpa till på :hotel, håll utkik i nyheterna efter chansen att gå med i ett team.",
+    "Visit the :startTag Team application page :endTag to see which teams are currently recruiting.": "Besök :startTag sidan för teamansökningar :endTag för att se vilka team som rekryterar just nu.",
+    "We currently have no members in this team": "Det här teamet har för närvarande inga medlemmar",
+    "No teams found": "Inga team hittades",
+    "Please check back later.": "Kom tillbaka senare.",
+    "There are no teams to display right now.": "Det finns inga team att visa just nu."
 }

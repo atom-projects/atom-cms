@@ -8,8 +8,11 @@ use App\Http\Requests\ResetPasswordRequest;
 use App\Mail\ResetPasswordMail;
 use App\Models\PasswordResetToken;
 use App\Models\User;
+use App\Support\FrontendUrls;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
 
@@ -20,19 +23,24 @@ class ForgotPasswordController extends Controller
         return view('auth.passwords.forget');
     }
 
-    public function submitForgetPassword(ForgotPasswordRequest $request): RedirectResponse
+    public function submitForgetPassword(ForgotPasswordRequest $request): RedirectResponse|JsonResponse
     {
+        $user = $this->accountFor($request->string('mail')->value());
+
         // Do not reveal whether the email exists, to prevent account enumeration.
-        if (User::where('mail', $request->mail)->exists()) {
-            $token = Str::uuid()->toString();
+        // Equal spellings all reach one account, so a silent cap per account limits its mails
+        // and keeps its pending link when the cap is used up.
+        if ($user !== null) {
+            RateLimiter::attempt(
+                'password-reset-mails:' . $user->id,
+                3,
+                fn () => $this->mailResetLink($user),
+                max(1, (int) config('habbo.password_reset_token_time')) * 60,
+            );
+        }
 
-            PasswordResetToken::where('email', $request->mail)->delete();
-            PasswordResetToken::create([
-                'email' => $request->mail,
-                'token' => PasswordResetToken::hashToken($token),
-            ]);
-
-            Mail::to($request->mail)->queue(new ResetPasswordMail($token));
+        if ($request->expectsJson()) {
+            return response()->json(['message' => __('We have e-mailed your password reset link!')]);
         }
 
         return back()->with('success', __('We have e-mailed your password reset link!'));
@@ -47,20 +55,56 @@ class ForgotPasswordController extends Controller
         return view('auth.passwords.reset', ['token' => $token]);
     }
 
-    public function submitResetPassword(ResetPasswordRequest $request, string $token): RedirectResponse
+    public function submitResetPassword(ResetPasswordRequest $request, string $token): RedirectResponse|JsonResponse
     {
         $prt = $this->validToken($token);
+        $owner = $prt?->owner();
 
-        if ($prt === null || $prt->user === null) {
+        if ($prt === null || $owner === null) {
             $prt?->delete();
+
+            if ($request->expectsJson()) {
+                return response()->json(['code' => 'invalid_reset_token', 'message' => __('This token has expired!')], 422);
+            }
 
             return $this->expired();
         }
 
-        $prt->user->changePassword($request->password);
+        $owner->changePassword($request->password);
         $prt->delete();
 
-        return to_route('login')->with('success', __('Your password has been successfully reset!'));
+        if ($request->expectsJson()) {
+            return response()->json(['message' => __('Your password has been successfully reset!')]);
+        }
+
+        return redirect(app(FrontendUrls::class)->route('login'))->with('success', __('Your password has been successfully reset!'));
+    }
+
+    /**
+     * The mail column's collation may ignore case and accents, so the account with
+     * the exact address wins, and several loose matches without one find nobody.
+     */
+    private function accountFor(string $mail): ?User
+    {
+        $matches = User::where('mail', $mail)->get();
+
+        return $matches->first(fn (User $user): bool => $user->mail === $mail)
+            ?? ($matches->containsOneItem() ? $matches->first() : null);
+    }
+
+    private function mailResetLink(User $user): void
+    {
+        $token = Str::uuid()->toString();
+
+        PasswordResetToken::where('email', $user->mail)->get()
+            ->filter(fn (PasswordResetToken $row): bool => $row->email === $user->mail)
+            ->each->delete();
+        PasswordResetToken::create([
+            'email' => $user->mail,
+            'token' => PasswordResetToken::hashToken($token),
+        ]);
+
+        Mail::to($user->mail)->queue(new ResetPasswordMail($token));
     }
 
     private function validToken(string $token): ?PasswordResetToken

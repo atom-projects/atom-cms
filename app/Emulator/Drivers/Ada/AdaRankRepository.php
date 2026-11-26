@@ -20,6 +20,11 @@ class AdaRankRepository implements RankRepository
         return 'name';
     }
 
+    public function userKey(): string
+    {
+        return 'rank';
+    }
+
     public function highestRank(): int
     {
         return (int) AdaRole::query()->max('id');
@@ -31,6 +36,11 @@ class AdaRankRepository implements RankRepository
             ->where('id', '<', $rank)
             ->pluck('name', 'id')
             ->all();
+    }
+
+    public function lowestStaffRank(): ?int
+    {
+        return null;
     }
 
     public function forDisplay(Builder|Relation $query): Builder|Relation
@@ -51,8 +61,9 @@ class AdaRankRepository implements RankRepository
             ->where('id', '>=', setting('min_staff_rank'))
             ->orderByDesc('id')
             ->with(['users' => fn ($query) => $query
-                ->select('users.id', 'username', 'rank', 'motto', 'look', 'hidden_staff', 'online')
-                ->when(! $includeHidden, fn ($query) => $query->where('hidden_staff', false))])
+                ->select('players.id', 'username', 'rank', 'motto', 'look', 'hidden_staff', 'online')
+                ->when(! $includeHidden, fn ($query) => $query->where('hidden_staff', false))
+                ->with(['permission' => fn ($query) => $this->forDisplay($query)])])
             ->get();
     }
 }

@@ -14,6 +14,8 @@ use App\Filament\Resources\User\Users\Pages\ViewUser;
 use App\Filament\Tables\Columns\UserAvatarColumn;
 use App\Models\Community\Teams\WebsiteTeam;
 use App\Models\User;
+use App\Rules\WebsiteWordfilterRule;
+use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Facades\Filament;
@@ -25,12 +27,14 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
 
 class UserResource extends Resource
@@ -55,11 +59,15 @@ class UserResource extends Resource
                     ->tabs([
                         Tab::make(__('filament::resources.tabs.General Information'))
                             ->schema([
+                                // The emulator owns renames, so housekeeping only
+                                // names an account while it is being created.
                                 TextInput::make('username')
                                     ->label(__('filament::resources.inputs.username'))
                                     ->required()
-                                    ->disabled()
-                                    ->unique(ignoreRecord: true)
+                                    ->disabled(fn (string $operation): bool => $operation !== 'create')
+                                    ->unique(column: fn (): string => Emulator::playerSchema()->column('username'), ignoreRecord: true)
+                                    ->rule(fn (): string => User::usernameFormatRule())
+                                    ->rule(new WebsiteWordfilterRule)
                                     ->maxLength(fn (): int => Emulator::constraints()->usernameLength),
 
                                 TextInput::make('motto')
@@ -77,6 +85,7 @@ class UserResource extends Resource
                                     ->required(),
 
                                 DateTimePicker::make('account_created')
+                                    ->hiddenOn('create')
                                     ->native(false)
                                     ->displayFormat('Y-m-d H:i:s')
                                     ->dehydrateStateUsing(fn (User $record) => $record->account_created)
@@ -84,6 +93,7 @@ class UserResource extends Resource
                                     ->label(__('filament::resources.inputs.created_at')),
 
                                 DateTimePicker::make('last_login')
+                                    ->hiddenOn('create')
                                     ->native(false)
                                     ->displayFormat('Y-m-d H:i:s')
                                     ->dehydrateStateUsing(fn (User $record) => $record->last_login)
@@ -91,6 +101,7 @@ class UserResource extends Resource
                                     ->label(__('filament::resources.inputs.last_login')),
 
                                 DateTimePicker::make('last_online')
+                                    ->hiddenOn('create')
                                     ->native(false)
                                     ->displayFormat('Y-m-d H:i:s')
                                     ->dehydrateStateUsing(fn (User $record) => $record->last_online)
@@ -98,14 +109,17 @@ class UserResource extends Resource
                                     ->label(__('filament::resources.inputs.last_online')),
 
                                 TextInput::make('ip_register')
+                                    ->hiddenOn('create')
                                     ->label(__('filament::resources.inputs.ip_register'))
                                     ->disabled(),
 
                                 TextInput::make('ip_current')
+                                    ->hiddenOn('create')
                                     ->label(__('filament::resources.inputs.ip_current'))
                                     ->disabled(),
 
                                 TextInput::make('referral_code')
+                                    ->hiddenOn('create')
                                     ->label(__('filament::resources.inputs.referral_code'))
                                     ->disabled(),
 
@@ -116,7 +130,11 @@ class UserResource extends Resource
                                     ->columnSpanFull(),
                             ])->columns(['sm' => 2]),
 
+                        // A new account starts on the hotel's configured balances;
+                        // the editor is where they are adjusted, with the emulator
+                        // in the loop for an online player.
                         Tab::make(__('filament::resources.tabs.Currencies'))
+                            ->hiddenOn('create')
                             ->schema([
                                 TextInput::make('credits')
                                     ->label(__('filament::resources.common.Credits'))
@@ -148,6 +166,7 @@ class UserResource extends Resource
                             ->schema([
                                 Section::make(__('filament::resources.tabs.Change Username'))
                                     ->description(__('filament::resources.helpers.change_username_description'))
+                                    ->hiddenOn('create')
                                     ->schema([
                                         Toggle::make('allow_change_username')
                                             ->label(__('filament::resources.inputs.allow_change_username'))
@@ -159,6 +178,7 @@ class UserResource extends Resource
                                         TextInput::make('mail')
                                             ->label(__('filament::resources.inputs.email'))
                                             ->email()
+                                            ->unique(column: fn (): string => Emulator::playerSchema()->column('mail'), ignoreRecord: true)
                                             ->maxLength(fn (): int => Emulator::constraints()->emailLength)
                                             ->required(),
                                     ])->collapsible()->collapsed(),
@@ -168,21 +188,42 @@ class UserResource extends Resource
                                     ->schema([
                                         TextInput::make('password')
                                             ->label(__('filament::resources.inputs.new_password'))
-                                            ->dehydrateStateUsing(fn ($state) => Hash::make($state))
+                                            // A new account goes through the registration
+                                            // action, which hashes the password itself.
+                                            ->dehydrateStateUsing(fn (string $operation, $state) => $operation === 'create' ? $state : Hash::make($state))
                                             ->dehydrated(fn ($state) => filled($state))
                                             ->password()
+                                            ->revealable()
+                                            ->suffixAction(
+                                                Action::make('generatePassword')
+                                                    ->label(__('filament::resources.actions.generate_password'))
+                                                    ->icon('heroicon-m-arrow-path')
+                                                    ->action(function (Set $set): void {
+                                                        $password = self::generatedPassword();
+
+                                                        $set('password', $password);
+                                                        $set('password_confirmation', $password);
+                                                    }),
+                                            )
                                             ->required(fn (string $operation): bool => $operation === 'create')
                                             ->rule(Password::default())
                                             ->confirmed(),
 
                                         TextInput::make('password_confirmation')
                                             ->label(__('filament::resources.inputs.new_password_confirmation'))
-                                            ->dehydrated(false)
-                                            ->password(),
+                                            // The registration rules expect the
+                                            // confirmation beside the password.
+                                            ->dehydrated(fn (string $operation): bool => $operation === 'create')
+                                            ->required(fn (string $operation): bool => $operation === 'create')
+                                            ->password()
+                                            ->revealable(),
                                     ])->collapsible()
-                                    ->visible(fn (): bool => hasHousekeepingPermission('reset_user_password', Filament::auth()->user()))
+                                    // An account cannot be created without a password,
+                                    // whoever is allowed to create one.
+                                    ->visible(fn (string $operation): bool => $operation === 'create'
+                                        || hasHousekeepingPermission('reset_user_password', Filament::auth()->user()))
                                     ->columns(['sm' => 2])
-                                    ->collapsed(),
+                                    ->collapsed(fn (string $operation): bool => $operation !== 'create'),
 
                                 Section::make(__('filament::resources.tabs.Change Rank'))
                                     ->schema([
@@ -210,18 +251,22 @@ class UserResource extends Resource
             ]);
     }
 
-    public static function getEloquentQuery(): Builder
+    /**
+     * The listing shows every account, including the actor's own and those of
+     * their peers. Which of them a staff member may open is decided here
+     * instead: a record at or above their own rank stays unresolvable, so its
+     * pages answer 404 rather than render a form the policy then refuses.
+     */
+    public static function getRecordRouteBindingEloquentQuery(): Builder
     {
-        $query = parent::getEloquentQuery();
+        $query = parent::getRecordRouteBindingEloquentQuery();
         $actor = Filament::auth()->user();
 
         if (! $actor instanceof User) {
             return $query->whereRaw('1 = 0');
         }
 
-        $query->where('rank', '<', $actor->rank);
-
-        return $query;
+        return $query->where('rank', '<', $actor->rank);
     }
 
     public static function table(Table $table): Table
@@ -280,6 +325,20 @@ class UserResource extends Resource
     public static function getRelations(): array
     {
         return Emulator::userRelationManagers();
+    }
+
+    /**
+     * A password the application's policy accepts: Str::password() always
+     * mixes in a number and a symbol, while the loop covers the upper and
+     * lower case the policy asks for as well.
+     */
+    private static function generatedPassword(): string
+    {
+        do {
+            $password = Str::password(20);
+        } while (preg_match('/(?=.*[a-z])(?=.*[A-Z])/', $password) !== 1);
+
+        return $password;
     }
 
     /**

@@ -3,6 +3,7 @@
 namespace App\Actions\Shop;
 
 use App\Contracts\Rcon;
+use App\Data\PurchaseReceiptData;
 use App\Exceptions\RconConnectionException;
 use App\Exceptions\ShopPurchaseException;
 use App\Models\Shop\WebsiteShopPackage;
@@ -20,20 +21,17 @@ final readonly class PurchaseShopPackage
     ) {}
 
     /**
-     * Run an item-package purchase end to end, returning the success message.
+     * Run an item-package purchase end to end, returning the committed receipt.
      *
      * @throws ShopPurchaseException when the purchase cannot proceed
      */
-    public function execute(User $buyer, WebsiteShopPackage $package, ?string $receiver): string
+    public function execute(User $buyer, WebsiteShopPackage $package, ?string $receiver): PurchaseReceiptData
     {
         $recipient = $this->resolveRecipient($buyer, $package, $receiver);
-
         $this->ensurePurchasable($buyer, $recipient, $package);
         $this->prepareRecipient($recipient);
 
-        $this->fulfil($buyer, $recipient, $package);
-
-        return $this->successMessage($buyer, $recipient, $package);
+        return $this->fulfil($buyer, $recipient, $package);
     }
 
     private function resolveRecipient(User $buyer, WebsiteShopPackage $package, ?string $receiver): User
@@ -63,6 +61,10 @@ final readonly class PurchaseShopPackage
 
     private function ensurePackageEligibility(User $recipient, WebsiteShopPackage $package, User $buyer): void
     {
+        if (! $recipient->is($buyer) && ! $package->is_giftable) {
+            throw new ShopPurchaseException(__('This package is not giftable'));
+        }
+
         if (! $package->isAvailable()) {
             throw new ShopPurchaseException(__('This package is no longer available'));
         }
@@ -78,6 +80,8 @@ final readonly class PurchaseShopPackage
                 ? __('Your rank is too high to purchase this package')
                 : __("The recipient's rank is too high to receive this package"));
         }
+
+        $this->fulfillPackage->ensureRanksApply($recipient, $package);
     }
 
     private function prepareRecipient(User $recipient): void
@@ -111,9 +115,9 @@ final readonly class PurchaseShopPackage
      * Deliver, decrement stock and charge in one transaction. The buyer,
      * recipient and package locks serialize balance, limit and stock checks.
      */
-    private function fulfil(User $buyer, User $recipient, WebsiteShopPackage $package): void
+    private function fulfil(User $buyer, User $recipient, WebsiteShopPackage $package): PurchaseReceiptData
     {
-        DB::transaction(function () use ($buyer, $recipient, $package): void {
+        return DB::transaction(function () use ($buyer, $recipient, $package): PurchaseReceiptData {
             $locked = $this->lockUsers($buyer, $recipient);
             $lockedBuyer = $locked->get($buyer->id);
             $lockedRecipient = $locked->get($recipient->id);
@@ -147,12 +151,14 @@ final readonly class PurchaseShopPackage
 
             $lockedBuyer->decrement('website_balance', $price);
 
-            WebsiteShopPurchase::create([
+            $purchase = WebsiteShopPurchase::create([
                 'user_id' => $lockedBuyer->id,
                 'website_shop_package_id' => $lockedPackage->id,
                 'gifted_to' => $lockedRecipient->is($lockedBuyer) ? null : $lockedRecipient->id,
             ]);
-        });
+
+            return new PurchaseReceiptData($purchase->id, $lockedPackage->name, $lockedRecipient->username, $price, StorefrontMoney::currencyCode());
+        }, attempts: 3);
     }
 
     private function ensureWithinPurchaseLimit(User $buyer, WebsiteShopPackage $package): void
@@ -204,18 +210,6 @@ final readonly class PurchaseShopPackage
     {
         return __('You need to top-up your account with another :amount to purchase this package', [
             'amount' => StorefrontMoney::format($price - $buyer->website_balance),
-        ]);
-    }
-
-    private function successMessage(User $buyer, User $recipient, WebsiteShopPackage $package): string
-    {
-        if ($recipient->is($buyer)) {
-            return __('You have successfully purchased the package :name', ['name' => $package->name]);
-        }
-
-        return __('You have successfully purchased the package :name for :username', [
-            'name' => $package->name,
-            'username' => $recipient->username,
         ]);
     }
 }

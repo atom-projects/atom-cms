@@ -1,4 +1,5 @@
 import "./bootstrap";
+import "../../../js/components/SessionChannel.js";
 import { initFlowbite, initPopovers } from "flowbite";
 
 import "swiper/css";
@@ -10,6 +11,7 @@ import ThemeSwitcher from "./components/ThemeSwitcher.js";
 import AtomSliders from "./components/AtomSliders.js";
 
 import "../../../js/components/HomeManager.js";
+import "../../../js/components/ClientShell.js";
 
 ThemeSwitcher.init();
 AtomSliders.init();

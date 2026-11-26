@@ -114,6 +114,8 @@
     "Session logs": "Oturum kayıtları",
     ":online :hotel online": ":online :hotel çevrimiçi",
     "Flash client": "Flash istemcisi",
+    "AIR client": "AIR istemcisi",
+    "Open AIR client": "AIR istemcisini aç",
     "Ban type:": "Yasak türü:",
     "Ban reason:": "Yasak nedeni:",
     "Ban expiration:": "Yasak bitiş tarihi:",
@@ -511,5 +513,17 @@
     "Swedish": "İsveççe",
     "Thank you for playing :hotel. We have put a lot of effort into making the hotel what it is, and we truly appreciate you being here": ":hotel otelinde oynadığın için teşekkürler. Oteli bugünkü hâline getirmek için çok emek harcadık ve burada olduğun için sana gerçekten minnettarız",
     "Translations": "Çeviriler",
-    "Turkish": "Türkçe"
+    "Turkish": "Türkçe",
+    ":hotel teams": ":hotel ekipleri",
+    "About the :hotel teams": ":hotel ekipleri hakkında",
+    "Our community teams bring players together to host events, help others, and make :hotel a fun place to be.": "Topluluk ekiplerimiz oyuncuları bir araya getirerek etkinlikler düzenler, başkalarına yardım eder ve :hotel’i eğlenceli bir yer haline getirir.",
+    "Each team has its own role in the community. Meet the members above and discover how they contribute to :hotel!": "Her ekibin toplulukta kendi rolü vardır. Yukarıdaki üyelerle tanışın ve :hotel’e nasıl katkıda bulunduklarını keşfedin!",
+    "Apply for teams": "Ekiplere başvur",
+    "How to join a team": "Bir ekibe nasıl katılırsınız",
+    "We open team applications periodically. If you would like to help out at :hotel, keep an eye on the news for opportunities to join a team.": "Ekip başvurularını düzenli olarak açıyoruz. :hotel’de yardımcı olmak istiyorsanız, bir ekibe katılma fırsatları için haberleri takip edin.",
+    "Visit the :startTag Team application page :endTag to see which teams are currently recruiting.": "Hangi ekiplerin şu anda üye aradığını görmek için :startTag Ekip başvuru sayfasını :endTag ziyaret edin.",
+    "We currently have no members in this team": "Bu ekipte şu anda üye yok",
+    "No teams found": "Ekip bulunamadı",
+    "Please check back later.": "Lütfen daha sonra tekrar kontrol edin.",
+    "There are no teams to display right now.": "Şu anda gösterilecek ekip yok."
 }

@@ -1,4 +1,5 @@
 import "./bootstrap";
+import "../../../js/components/SessionChannel.js";
 import { initFlowbite, initPopovers } from "flowbite";
 
 import { Livewire, Alpine } from "livewire";
@@ -10,6 +11,7 @@ import "swiper/css/navigation";
 import "swiper/css/pagination";
 
 import "../../../js/components/HomeManager.js";
+import "../../../js/components/ClientShell.js";
 
 window.Alpine = Alpine;
 

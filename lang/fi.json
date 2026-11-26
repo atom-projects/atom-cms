@@ -114,6 +114,8 @@
     "Session logs": "Kirjautumiset",
     ":online :hotel online": ":online hahmoa paikalla",
     "Flash client": "Flash",
+    "AIR client": "AIR",
+    "Open AIR client": "Avaa AIR-asiakasohjelma",
     "Ban type:": "Porttikiellon tyyppi:",
     "Ban reason:": "Porttikiellon syy:",
     "Ban expiration:": "Porttikielto umpeutuu:",
@@ -511,5 +513,17 @@
     "Swedish": "Ruotsi",
     "Thank you for playing :hotel. We have put a lot of effort into making the hotel what it is, and we truly appreciate you being here": "Kiitos, että pelaat hotellissa :hotel. Olemme nähneet paljon vaivaa tehdäksemme hotellista sellaisen kuin se on, ja arvostamme todella sitä, että olet täällä",
     "Translations": "Käännökset",
-    "Turkish": "Turkki"
+    "Turkish": "Turkki",
+    ":hotel teams": ":hotel-tiimit",
+    "About the :hotel teams": "Tietoa :hotel-tiimeistä",
+    "Our community teams bring players together to host events, help others, and make :hotel a fun place to be.": "Yhteisötiimimme tuovat pelaajat yhteen järjestämään tapahtumia, auttamaan muita ja tekemään :hotel-hotellista hauskan paikan.",
+    "Each team has its own role in the community. Meet the members above and discover how they contribute to :hotel!": "Jokaisella tiimillä on oma roolinsa yhteisössä. Tutustu jäseniin yllä ja katso, miten he auttavat :hotel-hotellia!",
+    "Apply for teams": "Hae tiimiin",
+    "How to join a team": "Näin liityt tiimiin",
+    "We open team applications periodically. If you would like to help out at :hotel, keep an eye on the news for opportunities to join a team.": "Avaamme tiimihaun säännöllisesti. Jos haluat auttaa :hotel-hotellissa, seuraa uutisia löytääksesi mahdollisuuden liittyä tiimiin.",
+    "Visit the :startTag Team application page :endTag to see which teams are currently recruiting.": "Katso :startTag tiimihakusivulta :endTag, mitkä tiimit hakevat jäseniä juuri nyt.",
+    "We currently have no members in this team": "Tässä tiimissä ei ole tällä hetkellä jäseniä",
+    "No teams found": "Tiimejä ei löytynyt",
+    "Please check back later.": "Tarkista myöhemmin uudelleen.",
+    "There are no teams to display right now.": "Tällä hetkellä ei ole näytettäviä tiimejä."
 }

@@ -2,13 +2,17 @@
 
 namespace App\Http;
 
+use App\Http\Middleware\ApiLocale;
 use App\Http\Middleware\Authenticate;
+use App\Http\Middleware\AuthenticateSession;
 use App\Http\Middleware\BannedMiddleware;
 use App\Http\Middleware\ConfigureRuntimeFilesystems;
 use App\Http\Middleware\EncryptCookies;
 use App\Http\Middleware\EnsureEmulatorFeature;
+use App\Http\Middleware\EnsureInstallationKeyAccepted;
 use App\Http\Middleware\FindRetrosMiddleware;
 use App\Http\Middleware\ForceStaffTwoFactorMiddleware;
+use App\Http\Middleware\HandleCors;
 use App\Http\Middleware\InstallationMiddleware;
 use App\Http\Middleware\LocalizationMiddleware;
 use App\Http\Middleware\MaintenanceMiddleware;
@@ -28,12 +32,10 @@ use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Foundation\Http\Kernel as HttpKernel;
 use Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull;
 use Illuminate\Foundation\Http\Middleware\ValidatePostSize;
-use Illuminate\Http\Middleware\HandleCors;
 use Illuminate\Http\Middleware\SetCacheHeaders;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Routing\Middleware\ValidateSignature;
-use Illuminate\Session\Middleware\AuthenticateSession;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful;
@@ -71,6 +73,7 @@ class Kernel extends HttpKernel
             EncryptCookies::class,
             AddQueuedCookiesToResponse::class,
             StartSession::class,
+            AuthenticateSession::class,
             ShareErrorsFromSession::class,
             VerifyCsrfToken::class,
             SubstituteBindings::class,
@@ -79,6 +82,7 @@ class Kernel extends HttpKernel
 
         'api' => [
             EnsureFrontendRequestsAreStateful::class,
+            ApiLocale::class,
             ThrottleRequests::class . ':api',
             SubstituteBindings::class,
         ],
@@ -108,5 +112,6 @@ class Kernel extends HttpKernel
         'vpn.checker' => VPNCheckerMiddleware::class,
         'force.staff.2fa' => ForceStaffTwoFactorMiddleware::class,
         'emulator.feature' => EnsureEmulatorFeature::class,
+        'installation.key' => EnsureInstallationKeyAccepted::class,
     ];
 }

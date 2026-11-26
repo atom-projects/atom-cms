@@ -24,10 +24,12 @@ use Illuminate\Console\Command;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Tests\AdaTestCase;
+use Tests\PlusTestCase;
 use Tests\TestCase;
 
 uses(TestCase::class, RefreshDatabase::class)->in('Feature');
 uses(AdaTestCase::class, RefreshDatabase::class)->in('Ada');
+uses(PlusTestCase::class, RefreshDatabase::class)->in('Plus');
 
 /*
 |--------------------------------------------------------------------------
@@ -79,6 +81,18 @@ function makePackage(array $attributes = []): WebsiteShopPackage
     return $package;
 }
 
+/**
+ * A member role and an owner role, so a Plus player created with rank 7
+ * resolves to the Owner role.
+ */
+function seedPlusRoles(): void
+{
+    DB::table('roles')->insert([
+        ['id' => 1, 'slug' => 'user', 'name' => 'User', 'description' => '', 'weight' => 1, 'security_level' => 1, 'badge_code' => '', 'is_staff' => false, 'is_hidden' => false, 'created_at' => now(), 'updated_at' => now()],
+        ['id' => 9, 'slug' => 'owner', 'name' => 'Owner', 'description' => '', 'weight' => 900, 'security_level' => 7, 'badge_code' => '', 'is_staff' => true, 'is_hidden' => false, 'created_at' => now(), 'updated_at' => now()],
+    ]);
+}
+
 function grantHousekeepingPermission(string $permission, int $minRank): void
 {
     WebsiteHousekeepingPermission::query()->create([
@@ -116,6 +130,20 @@ function makeAdaFurnitureItem(string $name = 'Ada chair'): int
         'can_trade' => true, 'can_marketplace_sell' => true, 'can_inventory_stack' => true,
         'can_gift' => true, 'interaction_modes' => 0,
     ]);
+}
+
+/**
+ * PlusEMU rooms reference their owner, layout and navigator category (0 is
+ * the emulator's "no category" row), so a room needs all three.
+ *
+ * @param  array<string, mixed>  $attributes  Extra rooms columns.
+ */
+function makePlusRoom(int $ownerId, array $attributes = []): int
+{
+    DB::table('navigator_categories')->insertOrIgnore(['id' => 0]);
+    DB::table('room_models')->insertOrIgnore(['id' => 'model_a', 'door_x' => 0, 'door_y' => 0, 'door_z' => 0, 'heightmap' => 'xxx', 'public_items' => '']);
+
+    return (int) DB::table('rooms')->insertGetId(['caption' => 'Room', 'owner' => $ownerId, 'description' => '', 'model_name' => 'model_a', ...$attributes]);
 }
 
 function makeAdaRoom(int $ownerId, ?int $accessType = null): int

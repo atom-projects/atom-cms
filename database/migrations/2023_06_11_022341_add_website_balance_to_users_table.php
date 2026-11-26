@@ -8,15 +8,16 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('users', function (Blueprint $table) {
+        Schema::table(cmsUserTable(), function (Blueprint $table) {
             $table->unsignedInteger('website_balance')->default(0)->after('referral_code');
         });
     }
 
     public function down(): void
     {
-        Schema::table('users', function (Blueprint $table) {
-            //
+        $users = cmsUserTable();
+        Schema::table($users, function (Blueprint $table) {
+            $table->dropColumn('website_balance');
         });
     }
 };

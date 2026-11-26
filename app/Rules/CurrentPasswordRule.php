@@ -3,10 +3,10 @@
 namespace App\Rules;
 
 use App\Models\User;
+use App\Services\Auth\PasswordVerifier;
 use Closure;
 use Illuminate\Contracts\Validation\InvokableRule;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
 
 class CurrentPasswordRule implements InvokableRule
 {
@@ -17,7 +17,7 @@ class CurrentPasswordRule implements InvokableRule
     {
         $user = Auth::user();
 
-        if (! $user instanceof User || ! is_string($value) || ! Hash::check($value, $user->password)) {
+        if (! $user instanceof User || ! is_string($value) || ! app(PasswordVerifier::class)->verify($user, $value)) {
             $fail('It seems like your current password is wrong.');
         }
     }

@@ -2,6 +2,7 @@
 
 use App\Emulator\Drivers\Ada\AdaDriver;
 use App\Emulator\Drivers\Arcturus\ArcturusDriver;
+use App\Emulator\Drivers\Plus\PlusDriver;
 
 return [
 
@@ -34,6 +35,7 @@ return [
 
         'arcturus' => ArcturusDriver::class,
         'ada' => AdaDriver::class,
+        'plus' => PlusDriver::class,
 
     ],
 

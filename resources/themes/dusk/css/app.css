@@ -26,6 +26,17 @@
     outline: none;
 }
 
+.nav-header :is(a, button):focus-visible,
+.sub-header :is(a, button):focus-visible {
+    outline: 2px solid #ac93da;
+    outline-offset: 3px;
+}
+
+.dropdown-children :is(a, button):focus-visible {
+    outline-color: #fff;
+    outline-offset: -3px;
+}
+
 body {
     overflow-x: hidden;
 }

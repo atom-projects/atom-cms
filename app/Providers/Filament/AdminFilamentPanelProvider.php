@@ -2,12 +2,13 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Auth\FortifyTwoFactorAuthentication;
 use App\Filament\Pages\Login;
+use App\Http\Middleware\AuthenticateHousekeepingSession;
 use App\Http\Middleware\BannedMiddleware;
 use App\Http\Middleware\ForceStaffTwoFactorMiddleware;
 use App\Http\Middleware\MaintenanceMiddleware;
 use Filament\Http\Middleware\Authenticate;
-use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Panel;
@@ -32,7 +33,8 @@ class AdminFilamentPanelProvider extends PanelProvider
             ->path('housekeeping')
             ->strictAuthorization()
             ->login(Login::class)
-            ->viteTheme('resources/css/filament/housekeeping/theme.css')
+            ->multiFactorAuthentication(app(FortifyTwoFactorAuthentication::class))
+            ->viteTheme('resources/css/filament/housekeeping/theme.css', 'build-housekeeping')
             ->colors([
                 'primary' => Color::Amber,
             ])
@@ -48,19 +50,22 @@ class AdminFilamentPanelProvider extends PanelProvider
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,
                 StartSession::class,
-                AuthenticateSession::class,
+                AuthenticateHousekeepingSession::class,
                 ShareErrorsFromSession::class,
                 PreventRequestForgery::class,
                 SubstituteBindings::class,
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
             ])
+            ->persistentMiddleware([
+                AuthenticateHousekeepingSession::class,
+            ])
             ->authMiddleware([
                 Authenticate::class,
                 BannedMiddleware::class,
                 MaintenanceMiddleware::class,
                 ForceStaffTwoFactorMiddleware::class,
-            ])
+            ], isPersistent: true)
             ->plugins([]);
     }
 }

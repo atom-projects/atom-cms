@@ -10,6 +10,8 @@ use Illuminate\Support\Facades\Cache;
 
 class TeamService
 {
+    public function __construct(private readonly RankRepository $ranks) {}
+
     /** @return Collection<int, WebsiteTeam> */
     public function fetchTeams(): Collection
     {
@@ -26,8 +28,8 @@ class TeamService
             ->where('hidden_rank', false)
             ->orderByDesc('id')
             ->with(['users' => function ($query) {
-                $query->select('id', 'username', 'look', 'motto', 'rank', 'team_id', 'online')
-                    ->with(['permission' => fn ($query) => app(RankRepository::class)->forDisplay($query)]);
+                $query->select('id', 'username', 'look', 'motto', $this->ranks->userKey(), 'team_id', 'online')
+                    ->with(['permission' => fn ($query) => $this->ranks->forDisplay($query)]);
             }])
             ->get();
 
