@@ -6,9 +6,9 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Models\Activity;
-use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\Support\LogOptions;
 
 /**
  * @property string $key The word to filter.
@@ -16,8 +16,8 @@ use Spatie\Activitylog\Traits\LogsActivity;
  * @property string $hide Wether the whole message that contains this word should be hidden from being displayed.
  * @property string $report Wether the message should be reported as auto-report to the moderators.
  * @property int $mute Time user gets muted for mentioning this word.
- * @property-read Collection<int, Activity> $activities
- * @property-read int|null $activities_count
+ * @property-read Collection<int, Activity> $activitiesAsSubject
+ * @property-read int|null $activities_as_subject_count
  *
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Wordfilter newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Wordfilter newQuery()
@@ -54,6 +54,6 @@ class Wordfilter extends Model
         return LogOptions::defaults()
             ->logAll()
             ->logOnlyDirty()
-            ->dontSubmitEmptyLogs();
+            ->dontLogEmptyChanges();
     }
 }
