@@ -72,12 +72,6 @@
         </x-content.content-card>
     </div>
 
-    <script
-        src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"
-        integrity="sha384-ZZ1pncU3bQe8y31yfZdMFdSpttDoPmOZg2wguVK9almUodir1PghgT0eY7Mrty8H"
-        crossorigin="anonymous"
-        referrerpolicy="no-referrer"
-    ></script>
     <script>
         function logoGenerator() {
             return {
@@ -95,67 +89,81 @@
 
                 async generateCanvas(action) {
                     const logoContainer = document.querySelector('#logoContainer');
-                    const originalStyles = logoContainer.getAttribute('style');
+                    const letters = [...logoContainer.children];
 
-                    let combinedWidth = 0;
-                    let maxHeight = 0;
+                    if (letters.length === 0) {
+                        return;
+                    }
 
-                    logoContainer.childNodes.forEach(child => {
-                        const rect = child.getBoundingClientRect();
-                        combinedWidth += rect.width;
-                        if (rect.height > maxHeight) {
-                            maxHeight = rect.height;
+                    try {
+                        await Promise.all(letters.filter(letter => letter.tagName === 'IMG').map(letter => letter.decode()));
+                    } catch {
+                        window.toast('{{ __('Something went wrong') }}', 'error');
+
+                        return;
+                    }
+
+                    const containerRect = logoContainer.getBoundingClientRect();
+                    const letterRects = letters.map(letter => letter.getBoundingClientRect());
+
+                    const canvas = document.createElement('canvas');
+                    canvas.width = Math.ceil(Math.max(...letterRects.map(rect => rect.right)) - containerRect.left);
+                    canvas.height = Math.ceil(Math.max(...letterRects.map(rect => rect.bottom)) - containerRect.top);
+
+                    const context = canvas.getContext('2d');
+                    context.imageSmoothingEnabled = false;
+
+                    letters.forEach((letter, index) => {
+                        if (letter.tagName !== 'IMG') {
+                            return;
                         }
+
+                        const rect = letterRects[index];
+                        context.drawImage(letter, Math.round(rect.left - containerRect.left), Math.round(rect.top - containerRect.top), rect.width, rect.height);
                     });
 
-                    combinedWidth += (logoContainer.childNodes.length - 1) * 2;
-                    logoContainer.style.display = 'flex';
-
-                    setTimeout(async () => {
-                        const canvas = await html2canvas(logoContainer, {
-                            backgroundColor: null,
-                            width: combinedWidth,
-                            height: maxHeight
-                        });
-
-                        logoContainer.setAttribute('style', originalStyles);
-
-                        if (action === 'use') {
-                            this.uploadLogo(canvas);
-                        } else {
-                            this.downloadCanvasAsImage(canvas);
-                        }
-                    }, 100);
+                    if (action === 'use') {
+                        this.uploadLogo(canvas);
+                    } else {
+                        this.downloadCanvasAsImage(canvas);
+                    }
                 },
 
-                async uploadLogo(canvas) {
+                uploadLogo(canvas) {
                     canvas.toBlob(async (blob) => {
                         const formData = new FormData();
                         const sanitizedFileName = `${this.text.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}.png`;
                         formData.append('logo', blob, sanitizedFileName);
 
-                        await fetch('{{ route('store.generated-logo') }}', {
-                            method: 'POST',
-                            headers: {
-                                'X-CSRF-TOKEN': "{{ csrf_token() }}"
-                            },
-                            body: formData
-                        }).then(response => response.json())
-                            .then(data => {
-                                if (data.success) {
-                                    window.toast(data.message);
-
-                                    setTimeout(() => {
-                                        window.location.href = "{{ url()->current() }}";
-                                    }, 1000);
-                                } else {
-                                    window.toast('{{ __('Something went wrong') }}', 'error');
-                                }
+                        try {
+                            const response = await fetch('{{ route('store.generated-logo') }}', {
+                                method: 'POST',
+                                headers: {
+                                    'Accept': 'application/json',
+                                    'X-CSRF-TOKEN': "{{ csrf_token() }}"
+                                },
+                                body: formData
                             });
+                            const data = await response.json();
+
+                            if (! response.ok || ! data.success) {
+                                window.toast(data.message ?? '{{ __('Something went wrong') }}', 'error');
+
+                                return;
+                            }
+
+                            window.toast(data.message);
+
+                            setTimeout(() => {
+                                window.location.href = "{{ url()->current() }}";
+                            }, 1000);
+                        } catch {
+                            window.toast('{{ __('Something went wrong') }}', 'error');
+                        }
                     }, 'image/png');
                 },
 
-                async downloadCanvasAsImage(canvas) {
+                downloadCanvasAsImage(canvas) {
                     const a = document.createElement('a');
                     const sanitizedFileName = this.text.replace(/[^a-zA-Z0-9]/g, '_');
                     a.href = canvas.toDataURL("image/png", 1.0);

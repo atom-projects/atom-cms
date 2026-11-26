@@ -29,7 +29,7 @@ services:
             - minio
             - mailpit
     mariadb:
-        image: 'mariadb:11.8.8-noble@sha256:efb4959ef2c835cd735dbc388eb9ad6aab0c78dd64febcd51bc17481111890c4'
+        image: 'mariadb:12.3.3-noble@sha256:dd9b303aed4f4890ed09f766d8ca9ddfd176c0c6f6267feff53b3192ec65a979'
         ports:
             - '127.0.0.1:${FORWARD_DB_PORT:-3306}:3306'
         environment:
@@ -52,7 +52,7 @@ services:
             retries: 3
             timeout: 5s
     mariadb-ada:
-        image: 'mariadb:11.8.8-noble@sha256:efb4959ef2c835cd735dbc388eb9ad6aab0c78dd64febcd51bc17481111890c4'
+        image: 'mariadb:12.3.3-noble@sha256:dd9b303aed4f4890ed09f766d8ca9ddfd176c0c6f6267feff53b3192ec65a979'
         ports:
             - '127.0.0.1:${FORWARD_ADA_DB_PORT:-3308}:3306'
         environment:
@@ -74,7 +74,7 @@ services:
             retries: 3
             timeout: 5s
     redis:
-        image: 'redis:8.8.0-alpine@sha256:9d317178eceac8454a2284a9e6df2466b93c745529947f0cd42a0fa9609d7005'
+        image: 'redis:8.10.3-alpine@sha256:21090af93f8324db2f0f0f4f38a7c60369d47d917e000c3423d89d2ae2883537'
         ports:
             - '127.0.0.1:${FORWARD_REDIS_PORT:-6379}:6379'
         volumes:
@@ -110,7 +110,7 @@ services:
             retries: 3
             timeout: 5s
     mailpit:
-        image: 'axllent/mailpit:latest@sha256:5a49a77c5bdbe7c5474450b4f46348d09949df3695257729c93a30369382d4f6'
+        image: 'axllent/mailpit:latest@sha256:b868afa176bfd6cce2323ea316cd99ccad77915e51e595748f6d786700ecf109'
         ports:
             - '127.0.0.1:${FORWARD_MAILPIT_PORT:-1025}:1025'
             - '127.0.0.1:${FORWARD_MAILPIT_DASHBOARD_PORT:-8025}:8025'
