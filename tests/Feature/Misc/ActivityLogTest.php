@@ -25,6 +25,8 @@ test('the upgrade moves old tracked changes out of properties', function () {
 
     $id = DB::table('activity_log')->insertGetId([
         'description' => 'updated',
+        'subject_type' => User::class,
+        'subject_id' => '1',
         'properties' => json_encode(['attributes' => ['motto' => 'after'], 'old' => ['motto' => 'before'], 'type' => 'credits']),
         'created_at' => now(),
         'updated_at' => now(),
