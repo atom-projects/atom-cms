@@ -50,9 +50,9 @@ use Illuminate\Validation\Rules\Unique;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 use Laravel\Sanctum\HasApiTokens;
 use Laravel\Sanctum\PersonalAccessToken;
-use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Models\Activity;
-use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\Support\LogOptions;
 
 /**
  * @property int $id
@@ -89,8 +89,8 @@ use Spatie\Activitylog\Traits\LogsActivity;
  * @property string|null $pincode
  * @property int|null $extra_rank
  * @property int|null $team_id
- * @property-read \Illuminate\Database\Eloquent\Collection<int, Activity> $activities
- * @property-read int|null $activities_count
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, Activity> $activitiesAsSubject
+ * @property-read int|null $activities_as_subject_count
  * @property-read \Illuminate\Database\Eloquent\Collection<int, WebsiteStaffApplications> $applications
  * @property-read int|null $applications_count
  * @property-read \Illuminate\Database\Eloquent\Collection<int, WebsiteArticleComment> $articleComments
@@ -459,7 +459,7 @@ class User extends Authenticatable implements FilamentUser, HasName
         return LogOptions::defaults()
             ->logOnly(['id', 'username', 'motto', 'rank', 'credits'])
             ->logOnlyDirty()
-            ->dontSubmitEmptyLogs();
+            ->dontLogEmptyChanges();
     }
 
     public function hasAppliedForTeam(int $teamId): bool
