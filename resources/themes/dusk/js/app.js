@@ -12,6 +12,8 @@ import "swiper/css/pagination";
 
 import "../../../js/components/HomeManager.js";
 import "../../../js/components/ClientShell.js";
+import "../../../js/components/InstallApp.js";
+import "../../../js/components/ClientViewport.js";
 
 window.Alpine = Alpine;
 

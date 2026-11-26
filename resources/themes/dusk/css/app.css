@@ -22,6 +22,23 @@
 
 }
 
+@layer base {
+    /* viewport-fit=cover lets the installed app draw under the notch and status bar. */
+    body {
+        padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    }
+
+    [data-install-app] {
+        --text: #f3f4f6;
+        --muted: #b8bdc9;
+        --panel: #2b303c;
+        --header: #21242e;
+        --border: #4b5563;
+        --accent: #957cc3;
+        --accent-border: #b29dd6;
+    }
+}
+
 :focus {
     outline: none;
 }

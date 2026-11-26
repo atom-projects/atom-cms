@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <x-web-app.head />
     <meta name="turbolinks-cache-control" content="no-cache">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
@@ -106,5 +106,6 @@
     <script defer src="{{ asset('assets/js/alpine-ui.js') }}"></script>
 
     @stack('javascript')
+    <x-web-app.install-prompt />
     </body>
 </html>

@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#0e151c" />
+    <title>Offline</title>
+    <style>
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        background: #0e151c;
+        color: #f3f4f6;
+        font-family: ui-sans-serif, system-ui, sans-serif;
+      }
+
+      main {
+        display: flex;
+        min-height: 100%;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 16px;
+        padding: 24px;
+        box-sizing: border-box;
+        text-align: center;
+      }
+
+      img {
+        width: 96px;
+        height: 96px;
+        border-radius: 22px;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 22px;
+      }
+
+      p {
+        margin: 0;
+        max-width: 320px;
+        color: #b8bdc9;
+        line-height: 1.5;
+      }
+
+      button {
+        min-height: 44px;
+        padding: 8px 24px;
+        border: 2px solid #cf9d15;
+        border-radius: 6px;
+        background: #eeb425;
+        color: #fff;
+        font: inherit;
+        font-weight: 700;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <img src="/pwa/icon-192.png" alt="" />
+      <h1>You are offline</h1>
+      <p>The hotel needs an internet connection. Check your connection and try again.</p>
+      <button type="button" onclick="location.reload()">Try again</button>
+    </main>
+  </body>
+</html>
