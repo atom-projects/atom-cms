@@ -8,8 +8,8 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::connection(config('activitylog.database_connection'))->table(config('activitylog.table_name'), function (Blueprint $table) {
-            if (! columnExists(config('activitylog.table_name'), 'batch_uuid')) {
+        Schema::table('activity_log', function (Blueprint $table) {
+            if (! columnExists('activity_log', 'batch_uuid')) {
                 $table->uuid('batch_uuid')->nullable()->after('properties');
             }
         });
@@ -17,7 +17,7 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::connection(config('activitylog.database_connection'))->table(config('activitylog.table_name'), function (Blueprint $table) {
+        Schema::table('activity_log', function (Blueprint $table) {
             $table->dropColumn('batch_uuid');
         });
     }
