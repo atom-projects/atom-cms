@@ -18,6 +18,7 @@ const openShell = (shell) => {
     const showClient = () => {
         websiteFrame.hidden = true;
         returnButton.hidden = true;
+        shell.removeAttribute("data-website-open");
         clientFrame.inert = false;
         document.title = clientTitle;
         window.history.replaceState(window.history.state, "", clientAddress);
@@ -31,6 +32,7 @@ const openShell = (shell) => {
             websiteFrame.src = event.currentTarget.href;
             websiteFrame.hidden = false;
             returnButton.hidden = false;
+            shell.setAttribute("data-website-open", "");
             clientFrame.inert = true;
         });
 

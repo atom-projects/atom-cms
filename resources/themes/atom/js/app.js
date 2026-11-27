@@ -12,6 +12,8 @@ import AtomSliders from "./components/AtomSliders.js";
 
 import "../../../js/components/HomeManager.js";
 import "../../../js/components/ClientShell.js";
+import "../../../js/components/InstallApp.js";
+import "../../../js/components/ClientViewport.js";
 
 ThemeSwitcher.init();
 AtomSliders.init();

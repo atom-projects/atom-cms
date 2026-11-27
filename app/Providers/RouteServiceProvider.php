@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Http\Controllers\Api\AvatarImageController;
+use App\Http\Controllers\Miscellaneous\WebAppManifestController;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Foundation\Support\Providers\RouteServiceProvider as ServiceProvider;
 use Illuminate\Http\Request;
@@ -40,6 +41,8 @@ class RouteServiceProvider extends ServiceProvider
             Route::middleware('web')->group(base_path('routes/shared.php'));
 
             if (config('atom.mode') === 'full') {
+                Route::get('manifest.webmanifest', WebAppManifestController::class)->name('web-app-manifest');
+
                 Route::middleware('web')->group(base_path('routes/web.php'));
             }
         });
